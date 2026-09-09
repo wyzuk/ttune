@@ -50,7 +50,6 @@ def test_spectrum_visualizer_theme():
 
 
 def test_extra_fat_bricks():
-    # Verify extra fat shapes exist and have expected dimensions
     assert "extra_fat" in VISUALIZER_SHAPES
     assert "mega_fat" in VISUALIZER_SHAPES
     assert "giant" in VISUALIZER_SHAPES
@@ -78,7 +77,6 @@ def test_visualizer_modes():
     tc.prev_mode()
     assert tc.viz_mode == "middle"
 
-    # Verify middle mirror rendering
     vis = SpectrumVisualizer()
     bars = np.ones(12, dtype=np.float32) * 0.7
     peaks = np.ones(12, dtype=np.float32) * 0.8

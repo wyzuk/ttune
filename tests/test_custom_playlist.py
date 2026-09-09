@@ -10,7 +10,6 @@ def test_custom_playlist_add_and_count():
 
     assert cpm.add("song_a.mp3") is True
     assert cpm.count == 1
-    # Adding duplicate should return False and not duplicate
     assert cpm.add("song_a.mp3") is False
     assert cpm.count == 1
 
@@ -34,7 +33,6 @@ def test_custom_playlist_remove():
     assert removed == "b.mp3"
     assert cpm.tracks == ["a.mp3", "c.mp3"]
 
-    # Out of bounds
     assert cpm.remove(10) is None
     assert cpm.remove(-1) is None
 
@@ -43,16 +41,12 @@ def test_custom_playlist_reorder():
     cpm = CustomPlaylistManager()
     cpm.add_many(["first.mp3", "second.mp3", "third.mp3"])
 
-    # Move down
     assert cpm.move_down(0) is True
     assert cpm.tracks == ["second.mp3", "first.mp3", "third.mp3"]
-    # Cannot move down last element
     assert cpm.move_down(2) is False
 
-    # Move up
     assert cpm.move_up(1) is True
     assert cpm.tracks == ["first.mp3", "second.mp3", "third.mp3"]
-    # Cannot move up first element
     assert cpm.move_up(0) is False
 
 

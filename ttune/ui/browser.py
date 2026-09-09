@@ -95,7 +95,6 @@ class FileBrowser:
             global_custom_playlist.add(str(selected))
             return f"+ Added '{selected.name}' to custom playlist ({global_custom_playlist.count} total)"
         else:
-            # Add all supported files in dir
             files = [str(f) for f in selected.glob("*.*") if is_supported_file(str(f))]
             added = global_custom_playlist.add_many(files)
             return f"+ Added {added} songs from '{selected.name}' to custom playlist"
@@ -105,7 +104,6 @@ class FileBrowser:
             return
         self.selected_index = max(0, min(len(self.items) - 1, self.selected_index + delta))
 
-        # Adjust scroll offset
         if self.selected_index < self.scroll_offset:
             self.scroll_offset = self.selected_index
         elif self.selected_index >= self.scroll_offset + visible_count:
@@ -173,7 +171,6 @@ class FileBrowser:
             while len(out) < lines - 3:
                 out.append("")
 
-            # Footer
             out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
             footer_keys = (
                 f" {c_badge}ENTER{STYLE_RESET} {c_key_txt}SELECT{STYLE_RESET}   "
@@ -312,17 +309,14 @@ def show_startup_menu(
             if chosen:
                 return chosen
         elif k == "S":
-            # Search music across PC
             chosen_search = show_search_screen(screen, keyboard)
             if chosen_search:
                 return chosen_search
         elif k == "P":
-            # View/play custom playlist
             chosen_playlist = show_playlist_screen(screen, keyboard)
             if chosen_playlist:
                 return chosen_playlist
         elif k == "T":
-            # Customize themes
             show_theme_picker(screen, keyboard, t_cfg)
         elif k in ("Q", "ESCAPE"):
             return None

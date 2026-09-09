@@ -20,7 +20,6 @@ from ttune.config import (
     SPECTRUM_GRADIENT,
 )
 
-# Box drawing characters
 BOX_HORIZ = "─"
 BOX_VERT = "│"
 BOX_TOP_LEFT = "┌"
@@ -33,13 +32,11 @@ BOX_T_RIGHT = "├"
 BOX_T_LEFT = "┤"
 BOX_CROSS = "┼"
 
-# Visualizer brick blocks (compatible with all Windows and Unix console fonts)
 BLOCK_FULL = "█"
 BLOCK_UPPER_HALF = "▀"
 BLOCK_LOWER_HALF = "▄"
 PEAK_MARK = "¯"
 
-# Progress bar characters
 PROG_FILLED = "═"
 PROG_KNOB = "●"
 PROG_EMPTY = "─"

@@ -10,18 +10,15 @@ def test_playlist_navigation():
     assert pm.count == 3
     assert pm.current_path() == "song1.mp3"
 
-    # Next track
     next_t = pm.next_track()
     assert pm.current_path() == "song2.mp3"
 
     next_t = pm.next_track()
     assert pm.current_path() == "song3.mp3"
 
-    # Loop around on RepeatMode.ALL
     next_t = pm.next_track()
     assert pm.current_path() == "song1.mp3"
 
-    # Previous track
     prev_t = pm.prev_track()
     assert pm.current_path() == "song3.mp3"
 
@@ -34,18 +31,15 @@ def test_repeat_modes():
     pm.toggle_repeat()
     assert pm.repeat_mode == RepeatMode.ONE
 
-    # In RepeatMode.ONE without force, next_track stays on current
     curr = pm.next_track(force=False)
     assert pm.current_path() == "song1.mp3"
 
-    # With force=True (manual user skip), advances
     curr = pm.next_track(force=True)
     assert pm.current_path() == "song2.mp3"
 
     pm.toggle_repeat()
     assert pm.repeat_mode == RepeatMode.OFF
 
-    # In RepeatMode.OFF at end of playlist, next_track returns None
     assert pm.next_track() is None
 
 

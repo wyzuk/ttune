@@ -21,25 +21,20 @@ def test_music_search_token_matching(tmp_path):
 
     assert len(engine._cached_files) == 3
 
-    # Query matching single token
     res = engine.search("synthwave")
     assert len(res) == 1
     assert "Cyberpunk Synthwave" in res[0]
 
-    # Multiple tokens
     res = engine.search("retro chill")
     assert len(res) == 1
     assert "Retro Chill" in res[0]
 
-    # Case insensitive
     res = engine.search("ROCK")
     assert len(res) == 1
     assert "Hard Rock" in res[0]
 
-    # No match
     res = engine.search("orchestral classical")
     assert len(res) == 0
 
-    # Empty query returns all
     res = engine.search("")
     assert len(res) == 3

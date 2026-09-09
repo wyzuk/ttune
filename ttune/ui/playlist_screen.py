@@ -95,7 +95,6 @@ def show_playlist_screen(
         while len(out) < lines - 3:
             out.append("")
 
-        # Footer
         out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
         footer_keys = (
             f" {c_badge}ENTER/P{STYLE_RESET} {c_key_txt}PLAY{STYLE_RESET}   "

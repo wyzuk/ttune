@@ -60,7 +60,6 @@ def string_width(text: str) -> int:
     return sum(char_width(c) for c in clean)
 
 
-# Alias for compatibility
 strip_ansi_len = string_width
 
 
@@ -139,9 +138,6 @@ class UIRenderer:
         c_key_txt = color_fg(COLOR_KEY_TEXT)
         c_gold = color_fg((255, 215, 0))
 
-        # -------------------------------------------------------------
-        # PURE VISUALIZER MODE (Activated with 'h' key)
-        # -------------------------------------------------------------
         if visualizer_only:
             bars_lines = self.visualizer.render(
                 width=cols,
@@ -156,11 +152,6 @@ class UIRenderer:
                 out.append(f"{bl}{right_fill}")
             return out[:lines]
 
-        # -------------------------------------------------------------
-        # 1. TOP SECTION: PLAYLIST (LEFT) + VISUALIZER (RIGHT)
-        # No top border line, no ttune label - directly pure visuals!
-        # -------------------------------------------------------------
-        # Bottom metadata section needs 5 lines (divider + title + artist + progress + hints)
         bottom_needed = 5
         viz_height = max(4, lines - bottom_needed)
 
@@ -184,7 +175,6 @@ class UIRenderer:
         current_idx = playlist.current_index
 
         if show_playlist:
-            # Calculate scroll offset to keep currently playing song visible
             if total_tracks <= viz_height:
                 start_idx = 0
             else:
@@ -228,18 +218,12 @@ class UIRenderer:
                 right_fill = " " * max(0, viz_width - bl_w)
                 out.append(f"{bl}{right_fill}")
 
-        # -------------------------------------------------------------
-        # 2. HORIZONTAL DIVIDER
-        # -------------------------------------------------------------
         if show_playlist:
             divider = f"{c_border_dim}{BOX_HORIZ * pl_width}{BOX_T_UP}{BOX_HORIZ * max(0, cols - pl_width - 1)}{STYLE_RESET}"
         else:
             divider = f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}"
         out.append(divider)
 
-        # -------------------------------------------------------------
-        # 3. SONG DETAILS & TRACK INFO (CENTERED IN THE BOTTOM)
-        # -------------------------------------------------------------
         current_meta = playlist.current_track()
         if current_meta:
             song_title = current_meta.title
@@ -256,18 +240,15 @@ class UIRenderer:
             artist_album = "Select a media file or folder to start playback"
             fmt_badge = ""
 
-        # A: Centered Song Title
         max_title_w = max(10, cols - 8)
         title_fitted = fit_text(f'"{song_title}"', max_title_w)
         title_styled = f"{c_title}{STYLE_BOLD}{title_fitted}{STYLE_RESET}"
         out.append(center_text(title_styled, cols))
 
-        # B: Centered Artist / Album & Format Badge
         meta_str = f"{c_artist}{artist_album}{STYLE_RESET}  {c_dim}{fmt_badge}{STYLE_RESET}"
         meta_fitted = fit_text(meta_str, max(10, cols - 8))
         out.append(center_text(meta_fitted, cols))
 
-        # C: Centered Playback Progress Bar + Status
         cur_str = format_duration(current_pos)
         dur_str = format_duration(duration) if duration > 0 else "--:--"
         pct = (current_pos / duration) if duration > 0 else 0.0
@@ -296,7 +277,6 @@ class UIRenderer:
         progress_line = f"{status_tag}  {time_tag}  {prog_bar_str}  {pct_tag}  {vol_tag}"
         out.append(center_text(progress_line, cols))
 
-        # D: Control Shortcuts Hint
         pl_hint = "HIDE LIST" if show_playlist else "SHOW LIST"
         mode_str = theme_config.mode_info["name"].upper() if theme_config else "VIZ"
         pal_str = theme_config.palette_name.upper() if theme_config else "THEME"

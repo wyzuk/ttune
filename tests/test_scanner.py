@@ -46,7 +46,6 @@ def test_scan_media_recursive_directory():
         sub = dir_path / "subdir"
         sub.mkdir()
 
-        # Create dummy media files
         (dir_path / "song1.mp3").touch()
         (dir_path / "song10.mp3").touch()
         (dir_path / "song2.wav").touch()
@@ -58,5 +57,4 @@ def test_scan_media_recursive_directory():
 
         assert "ignore.txt" not in basenames
         assert len(results) == 4
-        # Check natural sorting
         assert basenames == ["song1.mp3", "song2.wav", "song3.flac", "song10.mp3"]

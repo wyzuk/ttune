@@ -96,7 +96,6 @@ class SpectrumVisualizer:
         gap_block = " " * gap
         pad_str = " " * left_pad
 
-        # Clamp and scale arrays to match num_bars
         n = len(bar_heights)
         if n != num_bars:
             if n > 0:
@@ -110,16 +109,12 @@ class SpectrumVisualizer:
             b_vals = bar_heights.copy()
             p_vals = peak_heights.copy()
 
-        # Headroom factor so bricks don't touch the top ceiling too much
         HEADROOM = 0.84
         b_vals = np.clip(b_vals * HEADROOM, 0.0, 1.0)
         p_vals = np.clip(p_vals * HEADROOM, 0.0, 1.0)
 
         lines: List[str] = []
 
-        # -------------------------------------------------------------
-        # Mode: Middle Mirror (Center-Out Equalizer)
-        # -------------------------------------------------------------
         if mode == "middle":
             mid = (height + 1) / 2.0
             max_dist = max(1.0, (height - 1) / 2.0 if height > 1 else 1.0)
@@ -174,9 +169,6 @@ class SpectrumVisualizer:
 
             return lines
 
-        # -------------------------------------------------------------
-        # Mode: Middle Wave (Center-Anchored Pulse Equalizer)
-        # -------------------------------------------------------------
         elif mode == "middle_wave":
             mid = (height + 1) / 2.0
             max_dist = max(1.0, (height - 1) / 2.0 if height > 1 else 1.0)
@@ -218,9 +210,6 @@ class SpectrumVisualizer:
 
             return lines
 
-        # -------------------------------------------------------------
-        # Mode: Top-Down (Hanging Icicle Equalizer)
-        # -------------------------------------------------------------
         elif mode == "top_down":
             peak_color_code = color_fg(PEAK_COLOR)
 
@@ -259,9 +248,6 @@ class SpectrumVisualizer:
 
             return lines
 
-        # -------------------------------------------------------------
-        # Mode: Stereo Split (Mirrored Dual Bands)
-        # -------------------------------------------------------------
         elif mode == "stereo_split":
             mid = (height + 1) / 2.0
             max_dist = max(1.0, (height - 1) / 2.0 if height > 1 else 1.0)
@@ -307,14 +293,10 @@ class SpectrumVisualizer:
 
             return lines
 
-        # -------------------------------------------------------------
-        # Mode: Bottom-Up (Standard)
-        # -------------------------------------------------------------
         else:
             for r in range(height, 0, -1):
                 row_frac = r / float(height)
 
-                # Color for this height slice from active palette
                 rgb = get_gradient_color(row_frac, gradient=gradient)
                 color_code = color_fg(rgb)
                 peak_color_code = color_fg(PEAK_COLOR)

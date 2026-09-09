@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ttune"
 version = "1.0.0"
-description = "Retro Cyberpunk Terminal Music Player with Real-Time FFT Spectrum Visualizer"
+description = "Terminal music player with real-time audio spectrum visualizer"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }

@@ -7,7 +7,6 @@ from ttune.audio.analyzer import SpectrumAnalyzer
 
 def test_spectrum_analyzer_silence():
     analyzer = SpectrumAnalyzer(sample_rate=44100, window_size=1024)
-    # Feed silence
     analyzer.update_samples(np.zeros(1024, dtype=np.float32))
     bars, peaks = analyzer.get_spectrum(16)
 
@@ -20,13 +19,11 @@ def test_spectrum_analyzer_silence():
 def test_spectrum_analyzer_sine_wave():
     analyzer = SpectrumAnalyzer(sample_rate=44100, window_size=2048)
     t = np.linspace(0, 2048 / 44100.0, 2048, endpoint=False)
-    # Generate 440 Hz tone (A4)
     sine = (0.7 * np.sin(2 * np.pi * 440.0 * t)).astype(np.float32)
 
     analyzer.update_samples(sine)
     bars, peaks = analyzer.get_spectrum(32)
 
-    # Some bar should have significant energy
     assert np.max(bars) > 0.3
     assert np.max(peaks) >= np.max(bars)
 
@@ -39,9 +36,7 @@ def test_spectrum_peak_decay():
     analyzer.update_samples(sine)
     bars1, peaks1 = analyzer.get_spectrum(16)
 
-    # Feed silence
     analyzer.update_samples(np.zeros(1024, dtype=np.float32))
     bars2, peaks2 = analyzer.get_spectrum(16)
 
-    # Bars should decay rapidly or stay below previous peaks
     assert np.max(bars2) <= np.max(bars1)

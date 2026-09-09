@@ -11,7 +11,6 @@ from ttune.ui.theme import STYLE_RESET
 
 def enable_virtual_terminal() -> bool:
     """Enable ANSI virtual terminal processing and UTF-8 output on Windows."""
-    # Ensure UTF-8 output encoding to support box drawing and block characters
     if hasattr(sys.stdout, "reconfigure"):
         try:
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -28,15 +27,12 @@ def enable_virtual_terminal() -> bool:
             import ctypes
             kernel32 = ctypes.windll.kernel32
 
-            # Set console output code page to UTF-8 (65001)
             kernel32.SetConsoleOutputCP(65001)
             kernel32.SetConsoleCP(65001)
 
-            # STD_OUTPUT_HANDLE = -11
             handle = kernel32.GetStdHandle(-11)
             mode = ctypes.c_ulong()
             if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
-                # ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
                 mode.value |= 0x0004
                 kernel32.SetConsoleMode(handle, mode)
                 return True
@@ -59,7 +55,6 @@ class TerminalScreen:
             return
         enable_virtual_terminal()
 
-        # Enter alternate screen buffer & hide cursor
         try:
             sys.stdout.write("\033[?1049h\033[?25l\033[2J\033[H")
             sys.stdout.flush()
@@ -116,7 +111,6 @@ class TerminalScreen:
             sys.stdout.write(output)
             sys.stdout.flush()
         except UnicodeEncodeError:
-            # Fallback encode with utf-8 or replacement
             sys.stdout.buffer.write(output.encode("utf-8", errors="replace"))
             sys.stdout.buffer.flush()
         except Exception:

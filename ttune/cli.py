@@ -246,7 +246,7 @@ def main():
     """CLI parser and launcher."""
     parser = argparse.ArgumentParser(
         prog="ttune",
-        description="Retro Cyberpunk Terminal Music Player with Real-Time FFT Spectrum Visualizer",
+        description="Terminal Music Player with Real-Time Audio Spectrum Visualizer",
     )
     parser.add_argument(
         "path",

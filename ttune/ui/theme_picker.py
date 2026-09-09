@@ -62,7 +62,7 @@ def show_theme_picker(
     c_dim = color_fg(COLOR_TEXT_DIM)
     c_key_txt = color_fg(COLOR_KEY_TEXT)
 
-    selected_row = 0  # 0: Palette, 1: Shape, 2: Visualizer Mode, 3: Peak Caps
+    selected_row = 0
     vis_preview = SpectrumVisualizer()
 
     while True:
@@ -75,12 +75,10 @@ def show_theme_picker(
         out.append(f"{c_border}{BOX_TOP_LEFT}{BOX_HORIZ * 3} [ THEME & VISUALIZER STYLES ] {BOX_HORIZ * top_dash}{BOX_TOP_RIGHT}{STYLE_RESET}")
         out.append(f"{c_border}{BOX_VERT}{STYLE_RESET}{' ' * (cols - 2)}{c_border}{BOX_VERT}{STYLE_RESET}")
 
-        # Subtitle
         out.append(f"{c_border}{BOX_VERT}{STYLE_RESET}   {c_green}{STYLE_BOLD}CUSTOMIZE AUDIO SPECTRUM VISUALS & RGB PALETTES{STYLE_RESET}")
         out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
         out.append("")
 
-        # 1. Color Palette Row
         is_sel_0 = selected_row == 0
         ptr0 = f"{c_green}►{STYLE_RESET} " if is_sel_0 else "  "
         cur_pal = theme_config.palette_name
@@ -92,7 +90,6 @@ def show_theme_picker(
         out.append(pal_line)
         out.append("")
 
-        # 2. Shape Row
         is_sel_1 = selected_row == 1
         ptr1 = f"{c_green}►{STYLE_RESET} " if is_sel_1 else "  "
         cur_shape = theme_config.shape_name
@@ -105,7 +102,6 @@ def show_theme_picker(
         out.append(shape_line)
         out.append("")
 
-        # 3. Visualizer Mode Row (Middle visualizer, bottom-up, etc.)
         is_sel_2 = selected_row == 2
         ptr2 = f"{c_green}►{STYLE_RESET} " if is_sel_2 else "  "
         mode_info = theme_config.mode_info
@@ -117,7 +113,6 @@ def show_theme_picker(
         out.append(mode_line)
         out.append("")
 
-        # 4. Peak Caps Row
         is_sel_3 = selected_row == 3
         ptr3 = f"{c_green}►{STYLE_RESET} " if is_sel_3 else "  "
         peak_status = f"{c_green}[ENABLED]{STYLE_RESET}" if theme_config.show_peaks else f"{c_dim}[DISABLED]{STYLE_RESET}"
@@ -128,11 +123,9 @@ def show_theme_picker(
         out.append(peak_line)
         out.append("")
 
-        # 5. Live Visualizer Preview Box
         mode_label = mode_info['name'].upper()
         out.append(f"   {c_dim}─── LIVE SPECTRUM PREVIEW [{mode_label}] ───{STYLE_RESET}")
         
-        # 16 preview bars with nice audio curve
         p_bars = np.array([0.20, 0.40, 0.65, 0.85, 0.95, 0.75, 0.60, 0.45, 0.70, 0.90, 0.80, 0.55, 0.40, 0.30, 0.20, 0.15], dtype=np.float32)
         p_peaks = np.clip(p_bars + 0.06, 0.0, 1.0)
         

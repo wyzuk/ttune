@@ -55,7 +55,6 @@ def show_search_screen(
     notification = ""
     notification_ticks = 0
 
-    # Initial indexing (fast search roots)
     matches = global_search_engine.search(query, limit=100)
 
     while True:
@@ -67,13 +66,11 @@ def show_search_screen(
         top_dash = max(0, cols - 32)
         out.append(f"{c_border}{BOX_TOP_LEFT}{BOX_HORIZ * 3} [ SEARCH MUSIC ACROSS PC ] {BOX_HORIZ * top_dash}{BOX_TOP_RIGHT}{STYLE_RESET}")
 
-        # Search Query Input Box
         q_disp = query if query else ""
         cursor_char = "█"
         q_line = f" {c_green}{STYLE_BOLD}Search:{STYLE_RESET} {c_title}{q_disp}{c_badge}{cursor_char}{STYLE_RESET}"
         out.append(f"{c_border}{BOX_VERT}{STYLE_RESET} {q_line}")
 
-        # Notification banner if any
         if notification and notification_ticks > 0:
             notif_str = f" {c_green}{STYLE_BOLD}{notification}{STYLE_RESET}"
             out.append(f"{c_border}{BOX_VERT}{STYLE_RESET}{notif_str}")
@@ -84,7 +81,6 @@ def show_search_screen(
 
         out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
 
-        # Results area
         visible_rows = max(5, lines - 8)
         page_items = matches[scroll_offset : scroll_offset + visible_rows]
 
@@ -117,7 +113,6 @@ def show_search_screen(
         while len(out) < lines - 3:
             out.append("")
 
-        # Footer controls
         out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
         footer_keys = (
             f" {c_badge}ENTER{STYLE_RESET} {c_key_txt}PLAY{STYLE_RESET}   "
@@ -146,11 +141,9 @@ def show_search_screen(
                     scroll_offset = selected_idx - visible_rows + 1
         elif key == "ENTER":
             if matches and 0 <= selected_idx < len(matches):
-                # Return single track to play
                 return [matches[selected_idx]]
         elif key in ("P", "p") and not (len(key) == 1 and key.isprintable() and len(query) == 0 and False):
             if matches:
-                # Play all search matches
                 return matches
         elif key in ("A", "a") and selected_idx < len(matches):
             added = global_custom_playlist.add(matches[selected_idx])
