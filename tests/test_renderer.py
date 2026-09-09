@@ -68,3 +68,30 @@ def test_renderer_frame_dimensions():
         spectrum_peaks=np.zeros(40, dtype=np.float32),
     )
     assert len(lines_140x45) <= 45
+
+
+def test_visualizer_only_mode():
+    renderer = UIRenderer()
+    pm = PlaylistManager(["song1.mp3"])
+
+    lines_viz = renderer.build_frame(
+        cols=80,
+        lines=30,
+        playlist=pm,
+        current_pos=10.0,
+        duration=100.0,
+        volume=1.0,
+        is_playing=True,
+        is_paused=False,
+        is_muted=False,
+        spectrum_bars=np.zeros(20, dtype=np.float32),
+        spectrum_peaks=np.zeros(20, dtype=np.float32),
+        visualizer_only=True,
+    )
+    assert len(lines_viz) <= 30
+    full_text = "\n".join(lines_viz)
+    assert "VISUALIZER ONLY" in full_text
+    # Should NOT contain song title or up next
+    assert "UP NEXT" not in full_text
+    assert "song1.mp3" not in full_text
+

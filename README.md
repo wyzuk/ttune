@@ -15,12 +15,13 @@
 ## Features
 
 - **Real-Time FFT Spectrum Visualizer**: Hardware-like equalizer bars rendered with truecolor RGB LED blocks transitioning through cyan, blue, purple, magenta, and red/pink. Includes dynamic peak hold and smooth gravity decay.
+- **Visualizer-Only Mode (`H` Key)**: Press <kbd>H</kbd> to hide all song information and queue, expanding the spectrum visualizer to fill the entire terminal screen.
+- **Rock-Solid Layout with Centered Metadata**: The visualizer is anchored directly at the top with centered song title, artist, and progress bar below, preventing layout jitter or bouncing during full-screen resizing.
 - **Universal Media Playback**: Supports all common audio formats and decodes the audio track from video files without displaying video.
 - **Recursive Directory Discovery**: Automatically scans music folders and builds naturally sorted playlists (`track 2` before `track 10`).
 - **Smart Metadata Extraction**: Reads embedded title, artist, album, and bitrate tags with automatic clean filename fallback.
 - **Compact UP NEXT Queue**: Always shows upcoming tracks in the playlist.
 - **Interactive File Browser**: Built-in terminal directory navigator to browse and select music.
-- **Adaptive Terminal Layout**: Dynamically scales equalizer height, bar counts, and text formatting when resizing your terminal.
 - **Zero-Flicker Screen Buffer**: Uses ANSI cursor home positioning at ~35 FPS with low CPU consumption (<3%).
 
 ---
@@ -57,6 +58,7 @@ Playback and decoding are handled through FFmpeg / libav:
 | <kbd>→</kbd> | Next track |
 | <kbd>↑</kbd> | Volume up (+5%) |
 | <kbd>↓</kbd> | Volume down (-5%) |
+| <kbd>H</kbd> | Toggle pure visualizer mode (hide song info & queue) |
 | <kbd>[</kbd> | Seek backward (-5s) |
 | <kbd>]</kbd> | Seek forward (+5s) |
 | <kbd>R</kbd> | Cycle repeat mode (`ALL` → `ONE` → `OFF`) |

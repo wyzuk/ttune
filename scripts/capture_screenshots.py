@@ -255,8 +255,9 @@ def generate_all_screenshots():
         is_muted=False,
         spectrum_bars=bars2,
         spectrum_peaks=peaks2,
+        visualizer_only=True,
     )
-    render_terminal_to_image(viz_frame, "docs/screenshot-visualizer.png", title="ttune - real-time rgb visualizer", cols=cols)
+    render_terminal_to_image(viz_frame, "docs/screenshot-visualizer.png", title="ttune - visualizer only mode (H)", cols=cols)
 
     playlist.next_track(force=True)
     next_track = playlist.current_track()

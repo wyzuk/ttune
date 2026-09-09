@@ -57,6 +57,7 @@ class TTuneApp:
         self.renderer = UIRenderer()
         self.running = False
         self.volume = volume
+        self.visualizer_only = False
 
     def on_track_finished(self):
         """Callback from audio engine when track finishes."""
@@ -150,6 +151,8 @@ class TTuneApp:
                         self.playlist.toggle_shuffle()
                     elif key in ("m", "M"):
                         self.player.toggle_mute()
+                    elif key in ("h", "H"):
+                        self.visualizer_only = not self.visualizer_only
                     elif key == "[":
                         self.player.seek_relative(-5.0)
                     elif key == "]":
@@ -176,6 +179,7 @@ class TTuneApp:
                     is_muted=self.player.is_muted,
                     spectrum_bars=bars,
                     spectrum_peaks=peaks,
+                    visualizer_only=self.visualizer_only,
                 )
 
                 # 5. Render without flickering
