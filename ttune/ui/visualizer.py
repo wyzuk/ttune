@@ -9,9 +9,8 @@ from ttune.config import PEAK_COLOR, PEAK_COLOR_ALT
 from ttune.ui.theme import (
     BLOCK_FULL,
     BLOCK_LOWER_HALF,
-    BLOCK_OVERLINE,
+    BLOCK_UPPER_HALF,
     PEAK_MARK,
-    SUB_BLOCKS,
     STYLE_RESET,
     color_fg,
     get_gradient_color,
@@ -119,12 +118,9 @@ class SpectrumVisualizer:
                 if val >= row_frac:
                     # Solid brick
                     row_chunks.append(f"{color_code}{bar_block}")
-                elif val > prev_frac:
-                    # Partial brick for smoother height rendering
-                    sub_val = (val - prev_frac) / (row_frac - prev_frac)
-                    sub_idx = max(1, min(8, int(sub_val * 8)))
-                    char = SUB_BLOCKS[sub_idx] * bar_width
-                    row_chunks.append(f"{color_code}{char}")
+                elif val >= (row_frac - 0.5 / float(height)):
+                    # Half block for fine vertical resolution
+                    row_chunks.append(f"{color_code}{BLOCK_LOWER_HALF * bar_width}")
                 elif is_peak_here:
                     # Floating peak cap
                     row_chunks.append(f"{peak_color_code}{peak_block}")

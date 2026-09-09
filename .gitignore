@@ -26,9 +26,12 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# PyInstaller
+# PyInstaller & Binaries
 *.manifest
 *.spec
+*.exe
+*.dll
+*.bin
 
 # Installer logs
 pip-log.txt

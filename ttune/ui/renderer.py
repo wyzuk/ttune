@@ -130,7 +130,7 @@ class UIRenderer:
         # 1. TOP HEADER: ttune & STATUS
         # -------------------------------------------------------------
         app_tag = f"{c_border}{STYLE_BOLD}ttune{STYLE_RESET}"
-        status_tag = f"{c_green}{STYLE_BOLD}▶ PLAYING{STYLE_RESET}" if (is_playing and not is_paused) else (
+        status_tag = f"{c_green}{STYLE_BOLD}► PLAYING{STYLE_RESET}" if (is_playing and not is_paused) else (
             f"{c_badge}{STYLE_BOLD}❚❚ PAUSED{STYLE_RESET}" if is_paused else f"{c_dim}■ STOPPED{STYLE_RESET}"
         )
         vol_pct = int(round(volume * 100))
