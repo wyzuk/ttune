@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ttune"
+version = "1.0.0"
+description = "Retro Cyberpunk Terminal Music Player with Real-Time FFT Spectrum Visualizer"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "wyzuk", email = "wyzuk@github.com" }
+]
+keywords = [
+    "music-player",
+    "terminal",
+    "cyberpunk",
+    "visualizer",
+    "fft",
+    "spectrum-analyzer",
+    "audio",
+    "tui",
+    "cli"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio :: Players",
+]
+dependencies = [
+    "numpy>=1.22.0",
+    "sounddevice>=0.4.5",
+    "mutagen>=1.46.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[project.scripts]
+ttune = "ttune.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/wyzuk/ttune"
+Repository = "https://github.com/wyzuk/ttune"
+Issues = "https://github.com/wyzuk/ttune/issues"
+
+[tool.setuptools.packages.find]
+include = ["ttune*"]
