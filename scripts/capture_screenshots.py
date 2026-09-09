@@ -1,4 +1,4 @@
-"""Render real running ttune terminal frames directly into authentic PNG screenshots using Pillow and Consolas font."""
+"""Generate preview screenshots of the ttune terminal interface."""
 
 import os
 import re
@@ -97,7 +97,6 @@ def render_terminal_to_image(
         font = ImageFont.load_default()
         font_bold = font
 
-    # Calculate character metrics
     dummy_img = Image.new("RGB", (100, 100))
     draw = ImageDraw.Draw(dummy_img)
     bbox = font.getbbox("M")
@@ -117,7 +116,6 @@ def render_terminal_to_image(
     img = Image.new("RGB", (img_w, img_h), (8, 11, 16))
     draw = ImageDraw.Draw(img)
 
-    # Title bar
     draw.rectangle([0, 0, img_w, title_bar_h], fill=(13, 17, 23))
     draw.line([0, title_bar_h, img_w, title_bar_h], fill=(0, 240, 255), width=1)
 
@@ -211,7 +209,7 @@ def generate_theme_screenshot():
     c_dim = color_fg(COLOR_TEXT_DIM)
     c_key_txt = color_fg(COLOR_KEY_TEXT)
 
-    tc = ThemeConfig(palette_name="synthwave", shape_name="brick", show_peaks=True)
+    tc = ThemeConfig(palette_name="synthwave", shape_name="extra_fat", viz_mode="middle", show_peaks=True)
     out = []
     top_dash = cols - 32
     out.append(f"{c_border}{BOX_TOP_LEFT}{BOX_HORIZ * 3} [ THEME & VISUALIZER STYLES ] {BOX_HORIZ * top_dash}{BOX_TOP_RIGHT}{STYLE_RESET}")
@@ -220,39 +218,33 @@ def generate_theme_screenshot():
     out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
     out.append("")
 
-    swatch = render_palette_swatch("synthwave", length=20)
-    out.append(f" {c_green}▶{STYLE_RESET} {c_badge}[1] Color Palette:{STYLE_RESET}  {c_title}{STYLE_BOLD}◀ SYNTHWAVE    ▶{STYLE_RESET}   {swatch}")
+    swatch = render_palette_swatch("synthwave", length=16)
+    out.append(f"   {c_badge}[1] Color Palette:{STYLE_RESET}  {c_title}{STYLE_BOLD}◄ SYNTHWAVE     ►{STYLE_RESET}   {swatch}")
     out.append("")
-    out.append(f"   {c_badge}[2] Equalizer Shape:{STYLE_RESET} {c_title}{STYLE_BOLD}◀ Brick / Standard ▶{STYLE_RESET}  {c_dim}(Full LED block bricks){STYLE_RESET}")
+    out.append(f"   {c_badge}[2] Equalizer Shape:{STYLE_RESET} {c_title}{STYLE_BOLD}◄ Extra Fat (6-wide)   ►{STYLE_RESET}  {c_dim}(6-char wide chunky heavyweight fat blocks){STYLE_RESET}")
     out.append("")
-    out.append(f"   {c_badge}[3] Peak Decay Caps:{STYLE_RESET} {c_green}[ENABLED]{STYLE_RESET}  {c_dim}(Press [3] or Space to toggle){STYLE_RESET}")
+    out.append(f" {c_green}►{STYLE_RESET} {c_badge}[3] Visualizer Mode:{STYLE_RESET} {c_title}{STYLE_BOLD}◄ Middle Mirror        ►{STYLE_RESET}  {c_dim}(Symmetrical bars expanding up & down from center line){STYLE_RESET}")
     out.append("")
-    out.append(f"   {c_dim}─── LIVE SPECTRUM PREVIEW ───{STYLE_RESET}")
+    out.append(f"   {c_badge}[4] Peak Decay Caps:{STYLE_RESET} {c_green}[ENABLED]{STYLE_RESET}  {c_dim}(Press [4] or Space to toggle){STYLE_RESET}")
+    out.append("")
+    out.append(f"   {c_dim}─── LIVE SPECTRUM PREVIEW [MIDDLE MIRROR] ───{STYLE_RESET}")
 
-    grad = tc.gradient
-    p_bars = [0.25, 0.45, 0.80, 1.0, 0.90, 0.65, 0.85, 0.70, 0.40, 0.20]
-    for r in (4, 3, 2, 1):
-        row_c = []
-        for b in p_bars:
-            frac = r / 4.0
-            prev = (r - 1) / 4.0
-            color_str = color_fg(get_gradient_color(frac, gradient=grad))
-            if b >= frac:
-                row_c.append(f"{color_str}██")
-            elif b > prev:
-                row_c.append(f"{color_str}▄▄")
-            else:
-                row_c.append("  ")
-            row_c.append(" ")
-        out.append(f"   {''.join(row_c)}{STYLE_RESET}")
+    from ttune.ui.visualizer import SpectrumVisualizer
+    vis = SpectrumVisualizer()
+    p_bars = np.array([0.20, 0.40, 0.65, 0.85, 0.95, 0.75, 0.60, 0.45, 0.70, 0.90, 0.80, 0.55], dtype=np.float32)
+    p_peaks = np.clip(p_bars + 0.06, 0.0, 1.0)
+    preview_lines = vis.render(width=cols - 6, height=5, bar_heights=p_bars, peak_heights=p_peaks, theme_config=tc)
+    for pl in preview_lines:
+        out.append(f"   {pl}")
 
     while len(out) < lines - 3:
         out.append("")
     out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
     footer_help = (
         f" {c_badge}↑/↓{STYLE_RESET} {c_key_txt}SELECT{STYLE_RESET}   "
-        f"{c_badge}←/→{STYLE_RESET} {c_key_txt}CHANGE PALETTE/SHAPE{STYLE_RESET}   "
-        f"{c_badge}ENTER/B/ESC{STYLE_RESET} {c_key_txt}APPLY & RETURN{STYLE_RESET}"
+        f"{c_badge}←/→{STYLE_RESET} {c_key_txt}CHANGE{STYLE_RESET}   "
+        f"{c_badge}[1-4]{STYLE_RESET} {c_key_txt}QUICK SWITCH{STYLE_RESET}   "
+        f"{c_badge}ENTER/B/ESC{STYLE_RESET} {c_key_txt}DONE / BACK{STYLE_RESET}"
     )
     out.append(footer_help)
 
@@ -329,7 +321,8 @@ def generate_all_screenshots():
     next_track = playlist.current_track()
     player.load_and_play(next_track.path, duration=next_track.duration, start_time=5.0)
     time.sleep(1.2)
-    bars3, peaks3 = player.analyzer.get_spectrum(num_bars)
+    num_bars_full = renderer.visualizer.calculate_layout(cols)[0]
+    bars3, peaks3 = player.analyzer.get_spectrum(num_bars_full)
 
     playlist_frame = renderer.build_frame(
         cols=cols,
@@ -343,8 +336,9 @@ def generate_all_screenshots():
         is_muted=False,
         spectrum_bars=bars3,
         spectrum_peaks=peaks3,
+        show_playlist=False,
     )
-    render_terminal_to_image(playlist_frame, "docs/screenshot-playlist.png", title="ttune - playlist & queue", cols=cols)
+    render_terminal_to_image(playlist_frame, "docs/screenshot-playlist.png", title="ttune - full width visualizer (L key)", cols=cols)
 
     player.close()
     generate_menu_screenshot()

@@ -22,17 +22,14 @@ class MusicSearchEngine:
         roots: List[Path] = []
         home = Path(os.path.expanduser("~")).resolve()
 
-        # High-probability media folders
         common_subdirs = ["Music", "Desktop", "Downloads", "Documents", "Videos"]
         for sub in common_subdirs:
             p = home / sub
             if p.exists() and p.is_dir():
                 roots.append(p)
 
-        # Include home directory root (non-recursive immediate files)
         roots.append(home)
 
-        # Check other drive letters on Windows (e.g. D:\, E:\)
         if os.name == "nt":
             import string
             for letter in string.ascii_uppercase:
@@ -40,7 +37,6 @@ class MusicSearchEngine:
                     continue
                 drive_p = Path(f"{letter}:\\")
                 if drive_p.exists() and drive_p.is_dir():
-                    # If drive exists, add it to search roots
                     roots.append(drive_p)
 
         self._roots = roots
@@ -66,7 +62,6 @@ class MusicSearchEngine:
 
             try:
                 for current_dir, dirs, files in os.walk(str(root_path)):
-                    # Prune system/hidden directories
                     dirs[:] = [
                         d for d in dirs
                         if not d.startswith(".")
@@ -109,7 +104,6 @@ class MusicSearchEngine:
 
         for path in self._cached_files:
             filename = os.path.basename(path).lower()
-            # Check if all query tokens match filename or path
             if all(token in filename for token in query_tokens):
                 results.append(path)
             elif all(token in path.lower() for token in query_tokens):
@@ -121,5 +115,4 @@ class MusicSearchEngine:
         return results
 
 
-# Global singleton instance for fast reuse across menus
 global_search_engine = MusicSearchEngine()

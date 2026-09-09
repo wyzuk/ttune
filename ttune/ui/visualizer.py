@@ -5,10 +5,11 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 
-from ttune.config import PEAK_COLOR, ThemeConfig
+from ttune.config import COLOR_BORDER_DIM, PEAK_COLOR, ThemeConfig
 from ttune.ui.theme import (
     BLOCK_FULL,
     BLOCK_LOWER_HALF,
+    BLOCK_UPPER_HALF,
     PEAK_MARK,
     STYLE_RESET,
     color_fg,
@@ -49,7 +50,7 @@ class SpectrumVisualizer:
                 gap = 0
 
         slot = bar_width + gap
-        num_bars = max(4, (width - 2) // slot)
+        num_bars = max(4, (width - 2) // slot) if slot > 0 else 4
         used_width = num_bars * slot - gap
         left_pad = max(0, (width - used_width) // 2)
 
@@ -81,6 +82,7 @@ class SpectrumVisualizer:
         shape_info = theme_config.shape if theme_config else {}
         gradient = theme_config.gradient if theme_config else None
         show_peaks = theme_config.show_peaks if theme_config else True
+        mode = theme_config.viz_mode if theme_config else "bottom"
 
         char_full = shape_info.get("char", BLOCK_FULL)
         char_half = shape_info.get("half", BLOCK_LOWER_HALF)
@@ -88,6 +90,7 @@ class SpectrumVisualizer:
         num_bars, bar_width, gap, left_pad = self.calculate_layout(width, theme_config)
         bar_block = char_full * bar_width
         half_block = char_half * bar_width
+        upper_half_block = BLOCK_UPPER_HALF * bar_width
         peak_block = PEAK_MARK * bar_width
         empty_block = " " * bar_width
         gap_block = " " * gap
@@ -98,54 +101,253 @@ class SpectrumVisualizer:
         if n != num_bars:
             if n > 0:
                 indices = np.linspace(0, n - 1, num_bars).astype(int)
-                b_vals = bar_heights[indices]
-                p_vals = peak_heights[indices]
+                b_vals = bar_heights[indices].copy()
+                p_vals = peak_heights[indices].copy()
             else:
                 b_vals = np.zeros(num_bars, dtype=np.float32)
                 p_vals = np.zeros(num_bars, dtype=np.float32)
         else:
-            b_vals = bar_heights
-            p_vals = peak_heights
+            b_vals = bar_heights.copy()
+            p_vals = peak_heights.copy()
+
+        # Headroom factor so bricks don't touch the top ceiling too much
+        HEADROOM = 0.84
+        b_vals = np.clip(b_vals * HEADROOM, 0.0, 1.0)
+        p_vals = np.clip(p_vals * HEADROOM, 0.0, 1.0)
 
         lines: List[str] = []
 
-        # Render from top row (height) down to bottom row (1)
-        for r in range(height, 0, -1):
-            row_frac = r / float(height)
-
-            # Color for this height slice from active palette
-            rgb = get_gradient_color(row_frac, gradient=gradient)
-            color_code = color_fg(rgb)
+        # -------------------------------------------------------------
+        # Mode: Middle Mirror (Center-Out Equalizer)
+        # -------------------------------------------------------------
+        if mode == "middle":
+            mid = (height + 1) / 2.0
+            max_dist = max(1.0, (height - 1) / 2.0 if height > 1 else 1.0)
             peak_color_code = color_fg(PEAK_COLOR)
 
-            row_chunks = [pad_str]
+            for r in range(height, 0, -1):
+                dist = abs(r - mid)
+                frac = min(1.0, dist / max_dist)
+                rgb = get_gradient_color(frac, gradient=gradient)
+                color_code = color_fg(rgb)
 
-            for i in range(num_bars):
-                val = float(b_vals[i])
-                peak = float(p_vals[i])
+                row_chunks = [pad_str]
+                for i in range(num_bars):
+                    val = float(b_vals[i])
+                    peak = float(p_vals[i])
+                    val_dist = val * max_dist
+                    peak_dist = peak * max_dist
 
-                peak_row = int(math.ceil(peak * height))
-                is_peak_here = (
-                    show_peaks
-                    and peak_row == r
-                    and peak > 0.05
-                    and val < (r / float(height))
-                )
+                    is_peak_here = (
+                        show_peaks
+                        and abs(dist - peak_dist) < 0.6
+                        and peak > 0.08
+                        and dist > val_dist + 0.3
+                    )
 
-                if val >= row_frac:
-                    row_chunks.append(f"{color_code}{bar_block}")
-                elif val >= (row_frac - 0.5 / float(height)):
-                    row_chunks.append(f"{color_code}{half_block}")
-                elif is_peak_here:
-                    row_chunks.append(f"{peak_color_code}{peak_block}")
-                else:
-                    row_chunks.append(empty_block)
+                    if dist <= val_dist:
+                        row_chunks.append(f"{color_code}{bar_block}")
+                    elif dist <= val_dist + 0.5:
+                        if r > mid:
+                            row_chunks.append(f"{color_code}{half_block}")
+                        elif r < mid:
+                            row_chunks.append(f"{color_code}{upper_half_block}")
+                        else:
+                            row_chunks.append(f"{color_code}{bar_block}")
+                    elif abs(r - mid) < 0.6:
+                        if val > 0.03:
+                            row_chunks.append(f"{color_code}{half_block}")
+                        else:
+                            dim_c = color_fg(COLOR_BORDER_DIM)
+                            row_chunks.append(f"{dim_c}{'─' * bar_width}")
+                    elif is_peak_here:
+                        p_mark = peak_block if r > mid else ("_" * bar_width)
+                        row_chunks.append(f"{peak_color_code}{p_mark}")
+                    else:
+                        row_chunks.append(empty_block)
 
-                if gap > 0 and i < num_bars - 1:
-                    row_chunks.append(gap_block)
+                    if gap > 0 and i < num_bars - 1:
+                        row_chunks.append(gap_block)
 
-            row_chunks.append(STYLE_RESET)
-            row_str = "".join(row_chunks)
-            lines.append(row_str)
+                row_chunks.append(STYLE_RESET)
+                lines.append("".join(row_chunks))
 
-        return lines
+            return lines
+
+        # -------------------------------------------------------------
+        # Mode: Middle Wave (Center-Anchored Pulse Equalizer)
+        # -------------------------------------------------------------
+        elif mode == "middle_wave":
+            mid = (height + 1) / 2.0
+            max_dist = max(1.0, (height - 1) / 2.0 if height > 1 else 1.0)
+            peak_color_code = color_fg(PEAK_COLOR)
+
+            for r in range(height, 0, -1):
+                dist = abs(r - mid)
+                frac = min(1.0, dist / max_dist)
+                rgb = get_gradient_color(frac, gradient=gradient)
+                color_code = color_fg(rgb)
+
+                row_chunks = [pad_str]
+                for i in range(num_bars):
+                    val = float(b_vals[i])
+                    peak = float(p_vals[i])
+                    val_dist = val * max_dist
+                    peak_dist = peak * max_dist
+
+                    if abs(dist - val_dist) < 0.6 and val > 0.05:
+                        if r > mid:
+                            row_chunks.append(f"{color_code}{half_block}")
+                        else:
+                            row_chunks.append(f"{color_code}{upper_half_block}")
+                    elif dist < val_dist:
+                        row_chunks.append(f"{color_code}{bar_block}")
+                    elif abs(r - mid) < 0.6:
+                        dim_c = color_fg(COLOR_BORDER_DIM)
+                        row_chunks.append(f"{dim_c}{'━' * bar_width if val > 0.05 else '─' * bar_width}")
+                    elif show_peaks and abs(dist - peak_dist) < 0.6 and peak > 0.08:
+                        row_chunks.append(f"{peak_color_code}{peak_block if r > mid else '_' * bar_width}")
+                    else:
+                        row_chunks.append(empty_block)
+
+                    if gap > 0 and i < num_bars - 1:
+                        row_chunks.append(gap_block)
+
+                row_chunks.append(STYLE_RESET)
+                lines.append("".join(row_chunks))
+
+            return lines
+
+        # -------------------------------------------------------------
+        # Mode: Top-Down (Hanging Icicle Equalizer)
+        # -------------------------------------------------------------
+        elif mode == "top_down":
+            peak_color_code = color_fg(PEAK_COLOR)
+
+            for r in range(height, 0, -1):
+                row_frac = (height - r + 1) / float(height)
+                rgb = get_gradient_color(row_frac, gradient=gradient)
+                color_code = color_fg(rgb)
+
+                row_chunks = [pad_str]
+                for i in range(num_bars):
+                    val = float(b_vals[i])
+                    peak = float(p_vals[i])
+                    peak_row = height - int(math.ceil(peak * height)) + 1
+
+                    is_peak_here = (
+                        show_peaks
+                        and peak_row == r
+                        and peak > 0.05
+                        and val < row_frac
+                    )
+
+                    if val >= row_frac:
+                        row_chunks.append(f"{color_code}{bar_block}")
+                    elif val >= (row_frac - 0.5 / float(height)):
+                        row_chunks.append(f"{color_code}{upper_half_block}")
+                    elif is_peak_here:
+                        row_chunks.append(f"{peak_color_code}{'_' * bar_width}")
+                    else:
+                        row_chunks.append(empty_block)
+
+                    if gap > 0 and i < num_bars - 1:
+                        row_chunks.append(gap_block)
+
+                row_chunks.append(STYLE_RESET)
+                lines.append("".join(row_chunks))
+
+            return lines
+
+        # -------------------------------------------------------------
+        # Mode: Stereo Split (Mirrored Dual Bands)
+        # -------------------------------------------------------------
+        elif mode == "stereo_split":
+            mid = (height + 1) / 2.0
+            max_dist = max(1.0, (height - 1) / 2.0 if height > 1 else 1.0)
+            peak_color_code = color_fg(PEAK_COLOR)
+
+            for r in range(height, 0, -1):
+                dist = abs(r - mid)
+                frac = min(1.0, dist / max_dist)
+                rgb = get_gradient_color(frac, gradient=gradient)
+                color_code = color_fg(rgb)
+
+                row_chunks = [pad_str]
+                for i in range(num_bars):
+                    val = float(b_vals[i])
+                    peak = float(p_vals[i])
+                    val_dist = val * max_dist
+                    peak_dist = peak * max_dist
+
+                    if r >= mid:
+                        if dist <= val_dist:
+                            row_chunks.append(f"{color_code}{bar_block}")
+                        elif dist <= val_dist + 0.5:
+                            row_chunks.append(f"{color_code}{half_block}")
+                        elif show_peaks and abs(dist - peak_dist) < 0.6 and peak > 0.08:
+                            row_chunks.append(f"{peak_color_code}{peak_block}")
+                        else:
+                            row_chunks.append(empty_block)
+                    else:
+                        if dist <= val_dist:
+                            row_chunks.append(f"{color_code}{bar_block}")
+                        elif dist <= val_dist + 0.5:
+                            row_chunks.append(f"{color_code}{upper_half_block}")
+                        elif show_peaks and abs(dist - peak_dist) < 0.6 and peak > 0.08:
+                            row_chunks.append(f"{peak_color_code}{'_' * bar_width}")
+                        else:
+                            row_chunks.append(empty_block)
+
+                    if gap > 0 and i < num_bars - 1:
+                        row_chunks.append(gap_block)
+
+                row_chunks.append(STYLE_RESET)
+                lines.append("".join(row_chunks))
+
+            return lines
+
+        # -------------------------------------------------------------
+        # Mode: Bottom-Up (Standard)
+        # -------------------------------------------------------------
+        else:
+            for r in range(height, 0, -1):
+                row_frac = r / float(height)
+
+                # Color for this height slice from active palette
+                rgb = get_gradient_color(row_frac, gradient=gradient)
+                color_code = color_fg(rgb)
+                peak_color_code = color_fg(PEAK_COLOR)
+
+                row_chunks = [pad_str]
+
+                for i in range(num_bars):
+                    val = float(b_vals[i])
+                    peak = float(p_vals[i])
+
+                    peak_row = int(math.ceil(peak * height))
+                    is_peak_here = (
+                        show_peaks
+                        and peak_row == r
+                        and peak > 0.05
+                        and val < (r / float(height))
+                    )
+
+                    if val >= row_frac:
+                        row_chunks.append(f"{color_code}{bar_block}")
+                    elif val >= (row_frac - 0.5 / float(height)):
+                        row_chunks.append(f"{color_code}{half_block}")
+                    elif is_peak_here:
+                        row_chunks.append(f"{peak_color_code}{peak_block}")
+                    else:
+                        row_chunks.append(empty_block)
+
+                    if gap > 0 and i < num_bars - 1:
+                        row_chunks.append(gap_block)
+
+                row_chunks.append(STYLE_RESET)
+                row_str = "".join(row_chunks)
+                lines.append(row_str)
+
+            return lines
+

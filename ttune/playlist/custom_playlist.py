@@ -59,5 +59,4 @@ class CustomPlaylistManager:
         self._tracks.clear()
 
 
-# Global singleton custom playlist shared across screens
 global_custom_playlist = CustomPlaylistManager()

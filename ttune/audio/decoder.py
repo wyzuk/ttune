@@ -22,18 +22,14 @@ class AudioDecoder:
         self.is_eof = False
         self._stopped = False
 
-        # 4 bytes per float32 * 2 channels = 8 bytes per frame
         self.bytes_per_frame = 4 * self.channels
         self.chunk_frames = 2048
         self.chunk_bytes = self.chunk_frames * self.bytes_per_frame
 
-        # Queue holds numpy float32 arrays of shape (chunk_frames, channels)
-        # Maxsize of 50 chunks ~ 2.3 seconds of buffered audio
         self._queue: queue.Queue = queue.Queue(maxsize=40)
         self._process: Optional[subprocess.Popen] = None
         self._reader_thread: Optional[threading.Thread] = None
 
-        # Residual buffer for fractional frame requests
         self._residual = np.empty((0, self.channels), dtype=np.float32)
 
         self._start_ffmpeg(start_time)
@@ -43,7 +39,6 @@ class AudioDecoder:
         self.is_eof = False
         self._residual = np.empty((0, self.channels), dtype=np.float32)
 
-        # Clear existing queue
         while not self._queue.empty():
             try:
                 self._queue.get_nowait()
@@ -56,17 +51,16 @@ class AudioDecoder:
 
         cmd.extend([
             "-i", self.file_path,
-            "-vn", "-sn", "-dn",              # Disable video, subtitles, data
-            "-f", "f32le",                     # Raw 32-bit float Little Endian
-            "-ac", str(self.channels),        # Stereo
-            "-ar", str(self.sample_rate),     # 44100 Hz
-            "-v", "error",                     # Suppress banner/logs
-            "pipe:1"                           # Output to stdout
+            "-vn", "-sn", "-dn",
+            "-f", "f32le",
+            "-ac", str(self.channels),
+            "-ar", str(self.sample_rate),
+            "-v", "error",
+            "pipe:1"
         ])
 
         creationflags = 0
         if os.name == "nt":
-            # CREATE_NO_WINDOW prevents annoying console popup on Windows
             creationflags = 0x08000000
 
         self._process = subprocess.Popen(
@@ -93,13 +87,10 @@ class AudioDecoder:
                 if not raw_bytes:
                     break
 
-                # Convert raw bytes to float32 numpy array
                 arr = np.frombuffer(raw_bytes, dtype=np.float32)
-                # Reshape to (frames, channels)
                 num_complete_frames = len(arr) // self.channels
                 if num_complete_frames > 0:
                     frames = arr[: num_complete_frames * self.channels].reshape(-1, self.channels)
-                    # Put into queue, blocking if full with short timeout to allow check of _stopped
                     while not self._stopped:
                         try:
                             self._queue.put(frames, timeout=0.1)
@@ -116,7 +107,6 @@ class AudioDecoder:
         collected = []
         collected_count = 0
 
-        # First use any residual frames from previous call
         if len(self._residual) > 0:
             if len(self._residual) >= num_frames:
                 out = self._residual[:num_frames]
@@ -127,7 +117,6 @@ class AudioDecoder:
                 collected_count += len(self._residual)
                 self._residual = np.empty((0, self.channels), dtype=np.float32)
 
-        # Pull chunks from queue until we have enough frames
         while collected_count < num_frames and not self._stopped:
             try:
                 chunk = self._queue.get(timeout=0.04)
@@ -143,7 +132,6 @@ class AudioDecoder:
             except queue.Empty:
                 if self.is_eof:
                     break
-                # Buffer underrun / waiting for decoder
                 break
 
         if collected:
@@ -151,7 +139,6 @@ class AudioDecoder:
         else:
             result = np.empty((0, self.channels), dtype=np.float32)
 
-        # If we couldn't get enough frames (e.g. EOF or slight lag), pad with silence
         if len(result) < num_frames:
             padding = np.zeros((num_frames - len(result), self.channels), dtype=np.float32)
             result = np.vstack([result, padding]) if len(result) > 0 else padding

@@ -116,7 +116,6 @@ class PlaylistManager:
         if self._shuffle:
             self._apply_shuffle(curr_path)
         else:
-            # Revert to original order
             self._tracks = list(self._original_tracks)
             if curr_path and curr_path in self._tracks:
                 self._current_index = self._tracks.index(curr_path)

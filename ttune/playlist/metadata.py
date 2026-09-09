@@ -15,7 +15,7 @@ class TrackMetadata:
     title: str
     artist: str
     album: str
-    duration: float  # seconds
+    duration: float
     format_name: str = ""
     bitrate: Optional[int] = None
     sample_rate: int = 44100
@@ -41,7 +41,6 @@ def format_duration(seconds: float) -> str:
 def clean_filename(filename: str) -> str:
     """Clean common junk suffixes from media filenames."""
     base, _ = os.path.splitext(filename)
-    # Remove patterns like (Official Video), [TubeRipper.com], (getmp3.pro), (MP3_160K), etc.
     patterns = [
         r"\(official\s*(?:music\s*)?video\)",
         r"\[official\s*(?:music\s*)?video\]",
@@ -60,13 +59,10 @@ def clean_filename(filename: str) -> str:
     for p in patterns:
         cleaned = re.sub(p, "", cleaned, flags=re.IGNORECASE)
 
-    # Clean leading digits like "01 - " or "01. "
     cleaned = re.sub(r"^\d+[\s.-]+", "", cleaned)
-    # Replace multiple underscores with single spaces if appropriate
     if "_" in cleaned and " " not in cleaned:
         cleaned = cleaned.replace("_", " ")
 
-    # Strip excess spaces and trailing dashes
     cleaned = re.sub(r"\s+", " ", cleaned).strip(" -_")
     return cleaned if cleaned else base
 
@@ -84,7 +80,6 @@ def extract_metadata_mutagen(file_path: str) -> Optional[TrackMetadata]:
         bitrate = getattr(f.info, "bitrate", None) if f.info else None
         sample_rate = getattr(f.info, "sample_rate", 44100) if f.info else 44100
 
-        # Try to extract title, artist, album
         title = ""
         artist = ""
         album = ""
@@ -101,7 +96,6 @@ def extract_metadata_mutagen(file_path: str) -> Optional[TrackMetadata]:
         cleaned = clean_filename(filename)
 
         if not title:
-            # Check if filename has "Artist - Title" format
             if " - " in cleaned:
                 parts = cleaned.split(" - ", 1)
                 if not artist:
@@ -148,13 +142,11 @@ def extract_metadata_ffprobe(file_path: str) -> Optional[TrackMetadata]:
         data = json.loads(res.stdout)
         fmt = data.get("format", {})
         tags = fmt.get("tags", {})
-        # Case insensitive tag lookup
         lower_tags = {k.lower(): v for k, v in tags.items()}
 
         duration = float(fmt.get("duration", 0.0))
         bitrate = int(fmt.get("bit_rate", 0)) if fmt.get("bit_rate") else None
 
-        # Sample rate from first audio stream
         sample_rate = 44100
         for stream in data.get("streams", []):
             if stream.get("codec_type") == "audio":
@@ -205,15 +197,12 @@ def get_metadata(file_path: str) -> TrackMetadata:
     filename = os.path.basename(file_path)
     _, ext = os.path.splitext(file_path)
 
-    # Fast mutagen attempt
     meta = extract_metadata_mutagen(file_path)
     if meta and meta.duration > 0:
         return meta
 
-    # ffprobe fallback
     meta_ffprobe = extract_metadata_ffprobe(file_path)
     if meta_ffprobe:
-        # If mutagen had title/artist but no duration, merge them
         if meta and meta.title and meta.title != meta.filename:
             meta_ffprobe.title = meta.title
             meta_ffprobe.artist = meta.artist
@@ -223,7 +212,6 @@ def get_metadata(file_path: str) -> TrackMetadata:
     if meta:
         return meta
 
-    # Ultimate fallback: filename
     cleaned = clean_filename(filename)
     artist = "Unknown Artist"
     title = cleaned

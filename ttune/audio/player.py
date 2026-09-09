@@ -29,7 +29,6 @@ class AudioPlayer:
 
         self.analyzer = SpectrumAnalyzer(sample_rate=self.sample_rate)
 
-        # Player states
         self._is_playing = False
         self._is_paused = False
         self._volume = DEFAULT_VOLUME
@@ -39,13 +38,11 @@ class AudioPlayer:
         self._played_frames: int = 0
         self._start_offset_seconds: float = 0.0
 
-        # Concurrency & sub-components
         self._lock = threading.RLock()
         self._decoder: Optional[AudioDecoder] = None
         self._stream: Optional[sd.OutputStream] = None
         self._on_track_end: Optional[Callable[[], None]] = None
 
-        # End of track handling
         self._eos_detected = False
         self._eos_signaled = False
 
@@ -96,33 +93,26 @@ class AudioPlayer:
                 self.analyzer.update_samples(np.zeros(frames, dtype=np.float32))
                 return
 
-            # Read decoded frames
             chunk = self._decoder.read_frames(frames)
 
-            # Check if decoder has finished and queue is empty
             if self._decoder.is_eof and np.all(chunk == 0):
                 outdata.fill(0)
                 self.analyzer.update_samples(np.zeros(frames, dtype=np.float32))
                 if not self._eos_detected:
                     self._eos_detected = True
-                    # Notify end of stream from separate thread so callback is not delayed
                     threading.Thread(target=self._handle_track_finished, daemon=True).start()
                 return
 
-            # Apply volume / mute
             effective_volume = 0.0 if self._is_muted else self._volume
             if effective_volume != 1.0:
                 processed = chunk * effective_volume
             else:
                 processed = chunk
 
-            # Write to soundcard output buffer
             outdata[:] = processed
 
-            # Update sample count
             self._played_frames += frames
 
-            # Pass actual played audio to spectrum analyzer
             self.analyzer.update_samples(processed)
 
     def _handle_track_finished(self):
@@ -157,7 +147,6 @@ class AudioPlayer:
                 start_time=start_time,
             )
 
-            # Initialize sounddevice output stream if not already active
             if self._stream is None or not self._stream.active:
                 self._stream = sd.OutputStream(
                     samplerate=self.sample_rate,

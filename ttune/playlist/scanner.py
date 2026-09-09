@@ -42,12 +42,10 @@ def scan_media(path_str: str) -> List[str]:
                 f"Supported formats include: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
             )
 
-    # If it's a directory, recursively discover all files
     discovered: List[str] = []
     skip_dirs = {".git", ".svn", ".hg", "__pycache__", "node_modules", "$recycle.bin"}
 
     for root, dirs, files in os.walk(str(path)):
-        # Prune hidden or system directories
         dirs[:] = [d for d in dirs if not d.startswith(".") and d.lower() not in skip_dirs]
 
         for file in files:
@@ -57,6 +55,5 @@ def scan_media(path_str: str) -> List[str]:
             if is_supported_file(full_path):
                 discovered.append(full_path)
 
-    # Naturally sort by filename
     discovered.sort(key=lambda p: natural_sort_key(os.path.basename(p)))
     return discovered

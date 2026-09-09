@@ -61,6 +61,7 @@ class TTuneApp:
         self.running = False
         self.volume = volume
         self.visualizer_only = False
+        self.show_playlist = True
 
     def on_track_finished(self):
         """Callback from audio engine when track finishes."""
@@ -84,7 +85,6 @@ class TTuneApp:
 
         self.screen.init_terminal()
 
-        # Handle signals cleanly
         def sig_handler(signum, frame):
             self.cleanup()
             sys.exit(0)
@@ -97,14 +97,11 @@ class TTuneApp:
             chosen = self.target_path
 
             while True:
-                # If no initial path or returning from player via 'B':
                 if not chosen:
                     chosen = show_startup_menu(self.screen, self.keyboard, self.theme_config)
                     if not chosen:
-                        # User chose to quit from startup menu
                         break
 
-                # Resolve track paths
                 if isinstance(chosen, list):
                     tracks = chosen
                 else:
@@ -126,13 +123,11 @@ class TTuneApp:
                     chosen = None
                     continue
 
-                # Populate playlist and start playback
                 self.playlist.set_tracks(tracks)
                 self.player.set_volume(self.volume)
                 self.player.set_on_track_end(self.on_track_finished)
                 self.start_track()
 
-                # Main render & control loop
                 self.running = True
                 frame_interval = 1.0 / TARGET_FPS
                 return_to_menu = False
@@ -140,7 +135,6 @@ class TTuneApp:
                 while self.running:
                     loop_start = time.time()
 
-                    # 1. Process keyboard inputs
                     key = self.keyboard.read_key(timeout=0.01)
                     if key:
                         if key == "SPACE":
@@ -158,16 +152,18 @@ class TTuneApp:
                         elif key == "DOWN":
                             self.player.volume_down()
                         elif key in ("b", "B"):
-                            # Back to Home Menu!
                             self.player.stop()
                             return_to_menu = True
                             self.running = False
                             break
                         elif key in ("t", "T"):
-                            # Open theme & visualizer customizer
                             show_theme_picker(self.screen, self.keyboard, self.theme_config)
                         elif key in ("h", "H"):
                             self.visualizer_only = not self.visualizer_only
+                        elif key in ("l", "L"):
+                            self.show_playlist = not self.show_playlist
+                        elif key in ("v", "V"):
+                            self.theme_config.next_mode()
                         elif key in ("q", "Q", "ESCAPE"):
                             self.running = False
                             return 0
@@ -182,17 +178,19 @@ class TTuneApp:
                         elif key == "]":
                             self.player.seek_relative(5.0)
 
-                    # 2. Get current terminal dimensions
                     cols, lines = self.screen.get_size()
 
-                    # 3. Calculate FFT spectrum equalizer bars
-                    viz_inner_width = max(10, cols - 4)
+                    if self.visualizer_only or not self.show_playlist:
+                        viz_inner_width = max(10, cols)
+                    else:
+                        pl_width = min(36, max(22, int(cols * 0.28)))
+                        viz_inner_width = max(10, cols - pl_width - 1)
+
                     num_bars = self.renderer.visualizer.calculate_layout(
                         viz_inner_width, self.theme_config
                     )[0]
                     bars, peaks = self.player.analyzer.get_spectrum(num_bars)
 
-                    # 4. Compose UI frame
                     screen_lines = self.renderer.build_frame(
                         cols=cols,
                         lines=lines,
@@ -207,12 +205,11 @@ class TTuneApp:
                         spectrum_peaks=peaks,
                         visualizer_only=self.visualizer_only,
                         theme_config=self.theme_config,
+                        show_playlist=self.show_playlist,
                     )
 
-                    # 5. Render without flickering
                     self.screen.render_frame(screen_lines)
 
-                    # 6. Throttle to target FPS
                     elapsed = time.time() - loop_start
                     sleep_time = max(0.001, frame_interval - elapsed)
                     time.sleep(sleep_time)

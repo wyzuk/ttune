@@ -32,6 +32,7 @@ from ttune.ui.theme import (
     BOX_TOP_LEFT,
     BOX_TOP_RIGHT,
     BOX_VERT,
+    BOX_T_UP,
     PROG_EMPTY,
     PROG_FILLED,
     PROG_KNOB,
@@ -117,6 +118,7 @@ class UIRenderer:
         spectrum_peaks: np.ndarray,
         visualizer_only: bool = False,
         theme_config: Optional[ThemeConfig] = None,
+        show_playlist: bool = True,
     ) -> List[str]:
         """Compose all components into a list of terminal screen lines.
 
@@ -135,95 +137,108 @@ class UIRenderer:
         c_dim = color_fg(COLOR_TEXT_DIM)
         c_badge = color_fg(COLOR_KEY_BADGE)
         c_key_txt = color_fg(COLOR_KEY_TEXT)
+        c_gold = color_fg((255, 215, 0))
 
         # -------------------------------------------------------------
-        # 1. TOP HEADER: ttune & STATUS
-        # -------------------------------------------------------------
-        app_tag = f"{c_border}{STYLE_BOLD}ttune{STYLE_RESET}"
-
-        if visualizer_only:
-            status_tag = f"{c_green}{STYLE_BOLD}► VISUALIZER ONLY{STYLE_RESET}"
-            vol_pct = int(round(volume * 100))
-            vol_tag = f"{c_dim}MUTE{STYLE_RESET}" if is_muted else f"{c_badge}VOL: {vol_pct}%{STYLE_RESET}"
-            hint_tag = f"{c_dim}[H] RESTORE UI{STYLE_RESET}"
-            tags = [status_tag, vol_tag, hint_tag]
-        else:
-            status_tag = f"{c_green}{STYLE_BOLD}► PLAYING{STYLE_RESET}" if (is_playing and not is_paused) else (
-                f"{c_badge}{STYLE_BOLD}❚❚ PAUSED{STYLE_RESET}" if is_paused else f"{c_dim}■ STOPPED{STYLE_RESET}"
-            )
-            vol_pct = int(round(volume * 100))
-            vol_tag = f"{c_dim}MUTE{STYLE_RESET}" if is_muted else f"{c_badge}VOL: {vol_pct}%{STYLE_RESET}"
-            rep_tag = f"{c_dim}REP: {playlist.repeat_mode.value}{STYLE_RESET}"
-            shuf_tag = f"{c_green}SHUF{STYLE_RESET}" if playlist.shuffle_enabled else ""
-            theme_tag = f"{c_dim}{theme_config.palette_name.upper()}{STYLE_RESET}" if theme_config else ""
-            tags = [t for t in [status_tag, vol_tag, rep_tag, shuf_tag, theme_tag] if t]
-
-        tags_str = "  ".join(tags)
-
-        left_header = f" {app_tag} "
-        right_header = f" {tags_str} " if tags_str else ""
-        left_len = string_width(left_header)
-        right_len = string_width(right_header)
-
-        dash_count = max(0, cols - 2 - left_len - right_len)
-        header_line = f"{c_border}{BOX_TOP_LEFT}{BOX_HORIZ}{left_header}{c_border_dim}{BOX_HORIZ * dash_count}{right_header}{c_border}{BOX_HORIZ}{BOX_TOP_RIGHT}{STYLE_RESET}"
-        out.append(header_line)
-
-        # -------------------------------------------------------------
-        # 2. PURE VISUALIZER MODE (Activated with 'h' key)
+        # PURE VISUALIZER MODE (Activated with 'h' key)
         # -------------------------------------------------------------
         if visualizer_only:
-            # Visualizer fills the entire remaining screen height!
-            viz_height = max(4, lines - 2)
-            viz_inner_width = max(10, cols - 4)
-
             bars_lines = self.visualizer.render(
-                width=viz_inner_width,
-                height=viz_height,
+                width=cols,
+                height=lines,
                 bar_heights=spectrum_bars,
                 peak_heights=spectrum_peaks,
                 theme_config=theme_config,
             )
-
             for bl in bars_lines:
                 vis_len = string_width(bl)
-                right_fill = " " * max(0, viz_inner_width - vis_len)
-                out.append(f"{c_border_dim}{BOX_VERT}{STYLE_RESET} {bl}{right_fill} {c_border_dim}{BOX_VERT}{STYLE_RESET}")
-
-            # Bottom border
-            viz_bottom = f"{c_border}{BOX_BOTTOM_LEFT}{BOX_HORIZ * (cols - 2)}{BOX_BOTTOM_RIGHT}{STYLE_RESET}"
-            out.append(viz_bottom)
+                right_fill = " " * max(0, cols - vis_len)
+                out.append(f"{bl}{right_fill}")
             return out[:lines]
 
         # -------------------------------------------------------------
-        # 3. EXTENDED VISUALIZER AT THE TOP (Prevents layout bouncing!)
+        # 1. TOP SECTION: PLAYLIST (LEFT) + VISUALIZER (RIGHT)
+        # No top border line, no ttune label - directly pure visuals!
         # -------------------------------------------------------------
-        # Calculate rows needed for bottom metadata section
-        up_next_count = 2 if lines < 25 else (3 if lines < 32 else (4 if lines < 40 else 5))
-        bottom_needed = 5 + up_next_count
-        viz_height = max(4, lines - 2 - bottom_needed)
-        viz_inner_width = max(10, cols - 4)
+        # Bottom metadata section needs 5 lines (divider + title + artist + progress + hints)
+        bottom_needed = 5
+        viz_height = max(4, lines - bottom_needed)
 
-        # Render spectrum bars directly at top
+        if show_playlist:
+            pl_width = min(36, max(22, int(cols * 0.28)))
+            viz_width = max(10, cols - pl_width - 1)
+        else:
+            pl_width = 0
+            viz_width = cols
+
         bars_lines = self.visualizer.render(
-            width=viz_inner_width,
+            width=viz_width,
             height=viz_height,
             bar_heights=spectrum_bars,
             peak_heights=spectrum_peaks,
             theme_config=theme_config,
         )
 
-        for bl in bars_lines:
-            vis_len = string_width(bl)
-            right_fill = " " * max(0, viz_inner_width - vis_len)
-            out.append(f"{c_border_dim}{BOX_VERT}{STYLE_RESET} {bl}{right_fill} {c_border_dim}{BOX_VERT}{STYLE_RESET}")
+        all_tracks = playlist.tracks
+        total_tracks = len(all_tracks)
+        current_idx = playlist.current_index
 
-        # Visualizer bottom frame border
-        viz_bottom = f"{c_border_dim}{BOX_BOTTOM_LEFT}{BOX_HORIZ * (cols - 2)}{BOX_BOTTOM_RIGHT}{STYLE_RESET}"
-        out.append(viz_bottom)
+        if show_playlist:
+            # Calculate scroll offset to keep currently playing song visible
+            if total_tracks <= viz_height:
+                start_idx = 0
+            else:
+                start_idx = max(0, min(current_idx - (viz_height // 2), total_tracks - viz_height))
+
+            for r in range(viz_height):
+                t_idx = start_idx + r
+                if t_idx < total_tracks:
+                    meta = playlist.get_track_metadata(t_idx)
+                    raw_path = all_tracks[t_idx]
+                    track_title = meta.title if meta else os.path.splitext(os.path.basename(raw_path))[0]
+                    is_current = (t_idx == current_idx)
+                    num_str = f"{t_idx + 1}."
+
+                    if is_current:
+                        prefix = f" {c_gold}*{STYLE_RESET} {c_badge}{num_str}{STYLE_RESET} "
+                        prefix_w = 4 + len(num_str) + 1
+                        avail = max(4, pl_width - prefix_w)
+                        t_str = fit_text(track_title, avail)
+                        row_content = f"{prefix}{c_title}{STYLE_BOLD}{t_str}{STYLE_RESET}"
+                    else:
+                        prefix = f"   {c_dim}{num_str}{STYLE_RESET} "
+                        prefix_w = 3 + len(num_str) + 1
+                        avail = max(4, pl_width - prefix_w)
+                        t_str = fit_text(track_title, avail)
+                        row_content = f"{prefix}{c_artist}{t_str}{STYLE_RESET}"
+
+                    pad_len = max(0, pl_width - string_width(row_content))
+                    pl_part = f"{row_content}{' ' * pad_len}"
+                else:
+                    pl_part = " " * pl_width
+
+                bl = bars_lines[r] if r < len(bars_lines) else ""
+                bl_w = string_width(bl)
+                right_fill = " " * max(0, viz_width - bl_w)
+                out.append(f"{pl_part}{c_border_dim}{BOX_VERT}{STYLE_RESET}{bl}{right_fill}")
+        else:
+            for r in range(viz_height):
+                bl = bars_lines[r] if r < len(bars_lines) else ""
+                bl_w = string_width(bl)
+                right_fill = " " * max(0, viz_width - bl_w)
+                out.append(f"{bl}{right_fill}")
 
         # -------------------------------------------------------------
-        # 4. SONG DETAILS & TRACK INFO (CENTERED IN THE MIDDLE)
+        # 2. HORIZONTAL DIVIDER
+        # -------------------------------------------------------------
+        if show_playlist:
+            divider = f"{c_border_dim}{BOX_HORIZ * pl_width}{BOX_T_UP}{BOX_HORIZ * max(0, cols - pl_width - 1)}{STYLE_RESET}"
+        else:
+            divider = f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}"
+        out.append(divider)
+
+        # -------------------------------------------------------------
+        # 3. SONG DETAILS & TRACK INFO (CENTERED IN THE BOTTOM)
         # -------------------------------------------------------------
         current_meta = playlist.current_track()
         if current_meta:
@@ -252,19 +267,22 @@ class UIRenderer:
         meta_fitted = fit_text(meta_str, max(10, cols - 8))
         out.append(center_text(meta_fitted, cols))
 
-        # C: Centered Playback Progress Bar
+        # C: Centered Playback Progress Bar + Status
         cur_str = format_duration(current_pos)
         dur_str = format_duration(duration) if duration > 0 else "--:--"
         pct = (current_pos / duration) if duration > 0 else 0.0
         pct = max(0.0, min(1.0, pct))
         pct_int = int(round(pct * 100))
 
+        status_tag = f"{c_green}► PLAYING{STYLE_RESET}" if (is_playing and not is_paused) else (
+            f"{c_badge}❚❚ PAUSED{STYLE_RESET}" if is_paused else f"{c_dim}■ STOPPED{STYLE_RESET}"
+        )
+        vol_pct = int(round(volume * 100))
+        vol_tag = f"{c_dim}MUTE{STYLE_RESET}" if is_muted else f"{c_badge}VOL:{vol_pct}%{STYLE_RESET}"
         time_tag = f"{c_dim}[{c_badge}{cur_str}{c_dim}/{c_badge}{dur_str}{c_dim}]{STYLE_RESET}"
         pct_tag = f"{c_dim}[{c_green}{pct_int:3d}%{c_dim}]{STYLE_RESET}"
 
-        # Calculate progress bar width (centered, max 50 chars wide)
-        fixed_len = string_width(time_tag) + string_width(pct_tag) + 6
-        target_bar_len = min(40, max(8, cols - fixed_len - 10))
+        target_bar_len = min(36, max(8, cols - 50))
         filled_len = int(pct * target_bar_len)
         empty_len = max(0, target_bar_len - filled_len - 1)
 
@@ -275,33 +293,25 @@ class UIRenderer:
             f"{color_fg(COLOR_TITLE)}{PROG_KNOB}"
             f"{c_bg}{PROG_EMPTY * empty_len}{STYLE_RESET}"
         )
-        progress_line = f"{time_tag}  {prog_bar_str}  {pct_tag}"
+        progress_line = f"{status_tag}  {time_tag}  {prog_bar_str}  {pct_tag}  {vol_tag}"
         out.append(center_text(progress_line, cols))
 
-        # -------------------------------------------------------------
-        # 5. UP NEXT PLAYLIST QUEUE
-        # -------------------------------------------------------------
-        # Subtle horizontal divider
-        divider = f"{c_border_dim}{BOX_HORIZ * max(10, cols - 4)}{STYLE_RESET}"
-        out.append(center_text(divider, cols))
+        # D: Control Shortcuts Hint
+        pl_hint = "HIDE LIST" if show_playlist else "SHOW LIST"
+        mode_str = theme_config.mode_info["name"].upper() if theme_config else "VIZ"
+        pal_str = theme_config.palette_name.upper() if theme_config else "THEME"
+        controls_line = (
+            f"{c_badge}[SPACE]{c_key_txt} PLAY/PAUSE  "
+            f"{c_badge}[←/→]{c_key_txt} TRACK  "
+            f"{c_badge}[↑/↓]{c_key_txt} VOL  "
+            f"{c_badge}[L]{c_key_txt} {pl_hint}  "
+            f"{c_badge}[V]{c_key_txt} {mode_str}  "
+            f"{c_badge}[T]{c_key_txt} {pal_str}  "
+            f"{c_badge}[H]{c_key_txt} FULL-VIZ  "
+            f"{c_badge}[B]{c_key_txt} MENU"
+        )
+        out.append(center_text(controls_line, cols))
 
-        up_next_header = f"{c_green}{STYLE_BOLD}UP NEXT{STYLE_RESET}"
-        out.append(f"  {up_next_header}")
-
-        up_next_tracks = playlist.get_up_next(count=up_next_count)
-        if up_next_tracks:
-            for idx, track in enumerate(up_next_tracks, 1):
-                t_title = track.title
-                t_artist = f" - {track.artist}" if track.artist and track.artist != "Unknown Artist" else ""
-                t_dur = f"[{track.duration_str}]" if track.duration > 0 else ""
-                avail_title = max(10, cols - len(f"    {idx}. ") - len(t_dur) - 4)
-                combined = fit_text(f"{t_title}{t_artist}", avail_title)
-                line_str = f"    {c_badge}{idx}.{STYLE_RESET} {c_artist}{combined}{STYLE_RESET} {c_dim}{t_dur}{STYLE_RESET}"
-                out.append(line_str)
-        else:
-            out.append(f"    {c_dim}1. [Queue empty - End of playlist]{STYLE_RESET}")
-
-        # Ensure exact lines count without scrolling
         while len(out) < lines:
             out.append("")
 

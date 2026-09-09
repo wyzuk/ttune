@@ -90,8 +90,54 @@ def test_visualizer_only_mode():
     )
     assert len(lines_viz) <= 30
     full_text = "\n".join(lines_viz)
-    assert "VISUALIZER ONLY" in full_text
-    # Should NOT contain song title or up next
+    # Visualizer only mode fills the frame with pure visualizer lines
     assert "UP NEXT" not in full_text
     assert "song1.mp3" not in full_text
+
+
+def test_playlist_sidebar_toggle():
+    renderer = UIRenderer()
+    pm = PlaylistManager(["track_alpha.mp3", "track_beta.mp3"])
+
+    # Test with playlist visible (default)
+    lines_with_pl = renderer.build_frame(
+        cols=80,
+        lines=24,
+        playlist=pm,
+        current_pos=10.0,
+        duration=120.0,
+        volume=0.8,
+        is_playing=True,
+        is_paused=False,
+        is_muted=False,
+        spectrum_bars=np.zeros(20, dtype=np.float32),
+        spectrum_peaks=np.zeros(20, dtype=np.float32),
+        show_playlist=True,
+    )
+    text_with_pl = "\n".join(lines_with_pl)
+    # Song name should appear on left playlist with star for active track
+    assert "*" in text_with_pl
+    assert "track alpha" in text_with_pl
+    assert "UP NEXT" not in text_with_pl
+
+    # Test with playlist hidden ('l' key toggled off)
+    lines_without_pl = renderer.build_frame(
+        cols=80,
+        lines=24,
+        playlist=pm,
+        current_pos=10.0,
+        duration=120.0,
+        volume=0.8,
+        is_playing=True,
+        is_paused=False,
+        is_muted=False,
+        spectrum_bars=np.zeros(20, dtype=np.float32),
+        spectrum_peaks=np.zeros(20, dtype=np.float32),
+        show_playlist=False,
+    )
+    text_without_pl = "\n".join(lines_without_pl)
+    # The left playlist sidebar is gone
+    assert "track beta" not in text_without_pl
+    assert "UP NEXT" not in text_without_pl
+
 

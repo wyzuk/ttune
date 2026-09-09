@@ -48,7 +48,6 @@ if os.name == "nt":
             while time.time() - start_time < timeout:
                 if msvcrt.kbhit():
                     ch = msvcrt.getwch()
-                    # Check for extended key prefixes (arrow keys)
                     if ch in ("\x00", "\xe0"):
                         ch2 = msvcrt.getwch()
                         if ch2 == "H":

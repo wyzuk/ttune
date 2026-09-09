@@ -1,4 +1,4 @@
-﻿"""Tests for ThemeConfig, visualizer shapes, and palettes."""
+"""Tests for ThemeConfig, visualizer shapes, and palettes."""
 
 import numpy as np
 from ttune.config import THEME_PALETTES, VISUALIZER_SHAPES, ThemeConfig
@@ -47,3 +47,40 @@ def test_spectrum_visualizer_theme():
     assert len(rendered) == 10
     char_dot = tc.shape["char"]
     assert any(char_dot in line for line in rendered)
+
+
+def test_extra_fat_bricks():
+    # Verify extra fat shapes exist and have expected dimensions
+    assert "extra_fat" in VISUALIZER_SHAPES
+    assert "mega_fat" in VISUALIZER_SHAPES
+    assert "giant" in VISUALIZER_SHAPES
+    assert "colossal" in VISUALIZER_SHAPES
+    assert VISUALIZER_SHAPES["extra_fat"]["width"] == 6
+    assert VISUALIZER_SHAPES["mega_fat"]["width"] == 8
+    assert VISUALIZER_SHAPES["giant"]["width"] == 10
+    assert VISUALIZER_SHAPES["colossal"]["width"] == 14
+
+    tc = ThemeConfig(shape_name="extra_fat")
+    vis = SpectrumVisualizer()
+    bars = np.ones(8, dtype=np.float32) * 0.8
+    peaks = np.ones(8, dtype=np.float32) * 0.9
+    lines = vis.render(width=80, height=8, bar_heights=bars, peak_heights=peaks, theme_config=tc)
+    assert len(lines) == 8
+
+
+def test_visualizer_modes():
+    tc = ThemeConfig()
+    assert tc.viz_mode == "bottom"
+    tc.next_mode()
+    assert tc.viz_mode == "middle"
+    tc.next_mode()
+    assert tc.viz_mode == "middle_wave"
+    tc.prev_mode()
+    assert tc.viz_mode == "middle"
+
+    # Verify middle mirror rendering
+    vis = SpectrumVisualizer()
+    bars = np.ones(12, dtype=np.float32) * 0.7
+    peaks = np.ones(12, dtype=np.float32) * 0.8
+    lines_mid = vis.render(width=80, height=10, bar_heights=bars, peak_heights=peaks, theme_config=tc)
+    assert len(lines_mid) == 10
