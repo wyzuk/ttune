@@ -1,15 +1,14 @@
-"""Real-time spectrum equalizer renderer using LED brick blocks and truecolor gradients."""
+"""Real-time spectrum equalizer renderer supporting multiple shape styles and color themes."""
 
 import math
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
-from ttune.config import PEAK_COLOR, PEAK_COLOR_ALT
+from ttune.config import PEAK_COLOR, ThemeConfig
 from ttune.ui.theme import (
     BLOCK_FULL,
     BLOCK_LOWER_HALF,
-    BLOCK_UPPER_HALF,
     PEAK_MARK,
     STYLE_RESET,
     color_fg,
@@ -23,26 +22,31 @@ class SpectrumVisualizer:
     def __init__(self):
         pass
 
-    def calculate_layout(self, available_width: int) -> Tuple[int, int, int, int]:
-        """Calculate optimal bar width, gap, total bars, and left margin for given width.
-
-        Returns:
-            (num_bars, bar_width, gap, left_padding)
-        """
+    def calculate_layout(
+        self,
+        available_width: int,
+        theme_config: Optional[ThemeConfig] = None,
+    ) -> Tuple[int, int, int, int]:
+        """Calculate optimal bar width, gap, total bars, and left margin for given width."""
         width = max(10, available_width)
 
-        if width >= 70:
-            bar_width = 2
-            gap = 1
-        elif width >= 40:
-            bar_width = 2
-            gap = 1
-        elif width >= 25:
-            bar_width = 1
-            gap = 1
+        if theme_config and theme_config.shape:
+            shape = theme_config.shape
+            bar_width = shape.get("width", 2)
+            gap = shape.get("gap", 1)
         else:
-            bar_width = 1
-            gap = 0
+            if width >= 70:
+                bar_width = 2
+                gap = 1
+            elif width >= 40:
+                bar_width = 2
+                gap = 1
+            elif width >= 25:
+                bar_width = 1
+                gap = 1
+            else:
+                bar_width = 1
+                gap = 0
 
         slot = bar_width + gap
         num_bars = max(4, (width - 2) // slot)
@@ -57,6 +61,7 @@ class SpectrumVisualizer:
         height: int,
         bar_heights: np.ndarray,
         peak_heights: np.ndarray,
+        theme_config: Optional[ThemeConfig] = None,
     ) -> List[str]:
         """Render spectrum visualizer into a list of strings (one string per row).
 
@@ -65,6 +70,7 @@ class SpectrumVisualizer:
             height: Available inner height in rows.
             bar_heights: Normalized bar heights in range [0.0, 1.0].
             peak_heights: Normalized peak cap heights in range [0.0, 1.0].
+            theme_config: Active theme and visualizer configuration.
 
         Returns:
             List of formatted lines from top row to bottom row.
@@ -72,8 +78,16 @@ class SpectrumVisualizer:
         if height <= 0 or width <= 0:
             return []
 
-        num_bars, bar_width, gap, left_pad = self.calculate_layout(width)
-        bar_block = BLOCK_FULL * bar_width
+        shape_info = theme_config.shape if theme_config else {}
+        gradient = theme_config.gradient if theme_config else None
+        show_peaks = theme_config.show_peaks if theme_config else True
+
+        char_full = shape_info.get("char", BLOCK_FULL)
+        char_half = shape_info.get("half", BLOCK_LOWER_HALF)
+
+        num_bars, bar_width, gap, left_pad = self.calculate_layout(width, theme_config)
+        bar_block = char_full * bar_width
+        half_block = char_half * bar_width
         peak_block = PEAK_MARK * bar_width
         empty_block = " " * bar_width
         gap_block = " " * gap
@@ -98,10 +112,9 @@ class SpectrumVisualizer:
         # Render from top row (height) down to bottom row (1)
         for r in range(height, 0, -1):
             row_frac = r / float(height)
-            prev_frac = (r - 1) / float(height)
 
-            # Color for this height slice
-            rgb = get_gradient_color(row_frac)
+            # Color for this height slice from active palette
+            rgb = get_gradient_color(row_frac, gradient=gradient)
             color_code = color_fg(rgb)
             peak_color_code = color_fg(PEAK_COLOR)
 
@@ -111,18 +124,19 @@ class SpectrumVisualizer:
                 val = float(b_vals[i])
                 peak = float(p_vals[i])
 
-                # Check if peak cap is at this row
                 peak_row = int(math.ceil(peak * height))
-                is_peak_here = (peak_row == r and peak > 0.05 and val < (r / float(height)))
+                is_peak_here = (
+                    show_peaks
+                    and peak_row == r
+                    and peak > 0.05
+                    and val < (r / float(height))
+                )
 
                 if val >= row_frac:
-                    # Solid brick
                     row_chunks.append(f"{color_code}{bar_block}")
                 elif val >= (row_frac - 0.5 / float(height)):
-                    # Half block for fine vertical resolution
-                    row_chunks.append(f"{color_code}{BLOCK_LOWER_HALF * bar_width}")
+                    row_chunks.append(f"{color_code}{half_block}")
                 elif is_peak_here:
-                    # Floating peak cap
                     row_chunks.append(f"{peak_color_code}{peak_block}")
                 else:
                     row_chunks.append(empty_block)
@@ -130,11 +144,8 @@ class SpectrumVisualizer:
                 if gap > 0 and i < num_bars - 1:
                     row_chunks.append(gap_block)
 
-            # Reset style at end of each row
             row_chunks.append(STYLE_RESET)
             row_str = "".join(row_chunks)
-
-            # Right pad to full width if needed
             lines.append(row_str)
 
         return lines

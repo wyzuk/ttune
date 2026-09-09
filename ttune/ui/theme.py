@@ -1,6 +1,6 @@
 """Cyberpunk color palette, ANSI truecolor escape utilities, and box drawing symbols."""
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from ttune.config import (
     COLOR_ALBUM,
@@ -78,18 +78,21 @@ def interpolate_color(c1: Tuple[int, int, int], c2: Tuple[int, int, int], factor
     return (r, g, b)
 
 
-def get_gradient_color(height_fraction: float) -> Tuple[int, int, int]:
+def get_gradient_color(
+    height_fraction: float,
+    gradient: Optional[List[Tuple[int, int, int]]] = None,
+) -> Tuple[int, int, int]:
     """Map a vertical fraction (0.0 at bottom to 1.0 at top) to the spectrum gradient."""
     fraction = max(0.0, min(1.0, height_fraction))
-    gradient = SPECTRUM_GRADIENT
-    n_stops = len(gradient)
+    grad = gradient if gradient is not None else SPECTRUM_GRADIENT
+    n_stops = len(grad)
     if n_stops == 1:
-        return gradient[0]
+        return grad[0]
 
     pos = fraction * (n_stops - 1)
     idx = int(pos)
     if idx >= n_stops - 1:
-        return gradient[-1]
+        return grad[-1]
 
     sub_factor = pos - idx
-    return interpolate_color(gradient[idx], gradient[idx + 1], sub_factor)
+    return interpolate_color(grad[idx], grad[idx + 1], sub_factor)

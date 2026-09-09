@@ -14,14 +14,16 @@
 
 ## Features
 
-- **Real-Time FFT Spectrum Visualizer**: Hardware-like equalizer bars rendered with truecolor RGB LED blocks transitioning through cyan, blue, purple, magenta, and red/pink. Includes dynamic peak hold and smooth gravity decay.
+- **Real-Time FFT Spectrum Visualizer**: Hardware-like equalizer bars rendered with truecolor RGB LED blocks. Includes dynamic peak hold and smooth gravity decay.
+- **Theme & Visualizer Style Customizer (`T` Key)**: Choose from 7 color palettes (*Cyberpunk*, *Matrix*, *Synthwave*, *Fire*, *Ice*, *Amber*, *Vaporwave*) and 5 visualizer shapes (*Brick*, *Fat/Wide*, *Thin/Needle*, *Dots*, *Shades*) with live spectrum preview.
+- **PC-Wide Music Search (`S` in Menu)**: Instantly search audio across drives (`C:\`, `D:\`, `E:\`) and folders (`Music`, `Desktop`, `Downloads`) with live query filtering and one-key playback.
+- **Temporary Custom Playlist (`P` in Menu / `A` to Add)**: Queue songs on the fly from the file browser or search screen, reorder tracks, and play custom queues.
+- **Return to Menu (`B` Key)**: Return from active playback back to the interactive home menu at any time.
 - **Visualizer-Only Mode (`H` Key)**: Press <kbd>H</kbd> to hide all song information and queue, expanding the spectrum visualizer to fill the entire terminal screen.
 - **Rock-Solid Layout with Centered Metadata**: The visualizer is anchored directly at the top with centered song title, artist, and progress bar below, preventing layout jitter or bouncing during full-screen resizing.
 - **Universal Media Playback**: Supports all common audio formats and decodes the audio track from video files without displaying video.
 - **Recursive Directory Discovery**: Automatically scans music folders and builds naturally sorted playlists (`track 2` before `track 10`).
 - **Smart Metadata Extraction**: Reads embedded title, artist, album, and bitrate tags with automatic clean filename fallback.
-- **Compact UP NEXT Queue**: Always shows upcoming tracks in the playlist.
-- **Interactive File Browser**: Built-in terminal directory navigator to browse and select music.
 - **Zero-Flicker Screen Buffer**: Uses ANSI cursor home positioning at ~35 FPS with low CPU consumption (<3%).
 
 ---
@@ -51,6 +53,7 @@ Playback and decoding are handled through FFmpeg / libav:
 
 ## Keyboard Controls
 
+### Playback Screen
 | Key | Action |
 |:---|:---|
 | <kbd>Space</kbd> | Play / Pause |
@@ -58,13 +61,42 @@ Playback and decoding are handled through FFmpeg / libav:
 | <kbd>→</kbd> | Next track |
 | <kbd>↑</kbd> | Volume up (+5%) |
 | <kbd>↓</kbd> | Volume down (-5%) |
+| <kbd>B</kbd> | Return to Home Menu |
+| <kbd>T</kbd> | Open Theme & Style Customizer |
 | <kbd>H</kbd> | Toggle pure visualizer mode (hide song info & queue) |
 | <kbd>[</kbd> | Seek backward (-5s) |
 | <kbd>]</kbd> | Seek forward (+5s) |
 | <kbd>R</kbd> | Cycle repeat mode (`ALL` → `ONE` → `OFF`) |
 | <kbd>S</kbd> | Toggle shuffle |
 | <kbd>M</kbd> | Toggle mute |
-| <kbd>Q</kbd> | Quit ttune |
+| <kbd>Q</kbd> / <kbd>Esc</kbd> | Quit ttune |
+
+### Navigation & Menus
+| Screen | Key | Action |
+|:---|:---|:---|
+| **Home Menu** | <kbd>1</kbd> / <kbd>F</kbd> | Pick Single File |
+| | <kbd>2</kbd> / <kbd>D</kbd> | Pick Folder / Playlist |
+| | <kbd>3</kbd> / <kbd>S</kbd> | Search PC for Music |
+| | <kbd>4</kbd> / <kbd>P</kbd> | Custom Playlist Builder |
+| | <kbd>5</kbd> / <kbd>T</kbd> | Customize Themes & Shapes |
+| **File Browser** | <kbd>↑</kbd> / <kbd>↓</kbd> | Navigate files / folders |
+| | <kbd>Enter</kbd> | Open folder / Play file |
+| | <kbd>A</kbd> | Add highlighted track to Custom Playlist |
+| | <kbd>B</kbd> / <kbd>Esc</kbd> | Back |
+| **Search Screen**| *Type text* | Live query filtering across PC |
+| | <kbd>Enter</kbd> | Play selected track |
+| | <kbd>P</kbd> | Play all matching tracks |
+| | <kbd>A</kbd> | Add highlighted track to Custom Playlist |
+| | <kbd>Esc</kbd> | Return to Menu |
+| **Playlist Screen**| <kbd>Enter</kbd> / <kbd>P</kbd>| Start playback of playlist |
+| | <kbd>D</kbd> | Remove selected track |
+| | <kbd>C</kbd> | Clear playlist |
+| | <kbd>U</kbd> / <kbd>J</kbd> | Move track Up / Down |
+| | <kbd>B</kbd> / <kbd>Esc</kbd> | Return to Menu |
+| **Theme Customizer**| <kbd>←</kbd> / <kbd>→</kbd> | Cycle Color Palettes |
+| | <kbd>S</kbd> | Cycle Visualizer Shapes (Brick, Fat, Thin, Dots, Shades) |
+| | <kbd>P</kbd> | Toggle Peak Decay Caps |
+| | <kbd>Enter</kbd> / <kbd>Esc</kbd> | Apply & Return |
 
 ---
 

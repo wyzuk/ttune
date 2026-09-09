@@ -1,9 +1,9 @@
-"""Interactive startup menu and terminal file/folder browser."""
+"""Interactive startup menu and terminal file/folder browser with playlist and theme integration."""
 
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Union
 
 from ttune.config import (
     COLOR_ARTIST,
@@ -14,11 +14,13 @@ from ttune.config import (
     COLOR_TAG_GREEN,
     COLOR_TEXT_DIM,
     COLOR_TITLE,
-    SUPPORTED_EXTENSIONS,
+    ThemeConfig,
 )
 from ttune.input.keyboard import KeyboardReader
+from ttune.playlist.custom_playlist import global_custom_playlist
 from ttune.playlist.scanner import is_supported_file, natural_sort_key
-from ttune.ui.screen import TerminalScreen
+from ttune.ui.playlist_screen import show_playlist_screen
+from ttune.ui.search_screen import show_search_screen
 from ttune.ui.theme import (
     BOX_BOTTOM_LEFT,
     BOX_BOTTOM_RIGHT,
@@ -31,6 +33,7 @@ from ttune.ui.theme import (
     STYLE_RESET,
     color_fg,
 )
+from ttune.ui.theme_picker import show_theme_picker
 
 
 class FileBrowser:
@@ -41,6 +44,8 @@ class FileBrowser:
         self.selected_index = 0
         self.scroll_offset = 0
         self.items: List[Path] = []
+        self._notification = ""
+        self._notification_ticks = 0
         self._refresh_items()
 
     def _refresh_items(self):
@@ -80,6 +85,21 @@ class FileBrowser:
         else:
             return str(selected)
 
+    def add_selected_to_playlist(self) -> str:
+        """Add selected item (file or directory contents) to custom playlist."""
+        if not self.items or self.selected_index >= len(self.items):
+            return ""
+
+        selected = self.items[self.selected_index]
+        if selected.is_file():
+            global_custom_playlist.add(str(selected))
+            return f"+ Added '{selected.name}' to custom playlist ({global_custom_playlist.count} total)"
+        else:
+            # Add all supported files in dir
+            files = [str(f) for f in selected.glob("*.*") if is_supported_file(str(f))]
+            added = global_custom_playlist.add_many(files)
+            return f"+ Added {added} songs from '{selected.name}' to custom playlist"
+
     def move_selection(self, delta: int, visible_count: int):
         if not self.items:
             return
@@ -91,7 +111,7 @@ class FileBrowser:
         elif self.selected_index >= self.scroll_offset + visible_count:
             self.scroll_offset = self.selected_index - visible_count + 1
 
-    def run(self, screen: TerminalScreen, keyboard: KeyboardReader) -> Optional[str]:
+    def run(self, screen, keyboard: KeyboardReader) -> Optional[str]:
         """Run interactive file browser until a path is chosen or user exits."""
         c_border = color_fg(COLOR_BORDER)
         c_border_dim = color_fg(COLOR_BORDER_DIM)
@@ -103,20 +123,25 @@ class FileBrowser:
 
         while True:
             cols, lines = screen.get_size()
-            cols = max(50, cols)
+            cols = max(55, cols)
             lines = max(18, lines)
 
             out = []
-            header = f"{c_border}{BOX_TOP_LEFT}{BOX_HORIZ} [ ttune BROWSER ] {c_border_dim}{BOX_HORIZ * (cols - 22)}{c_border}{BOX_TOP_RIGHT}{STYLE_RESET}"
+            header = f"{c_border}{BOX_TOP_LEFT}{BOX_HORIZ} [ ttune BROWSER ] {c_border_dim}{BOX_HORIZ * max(0, cols - 22)}{c_border}{BOX_TOP_RIGHT}{STYLE_RESET}"
             out.append(header)
 
             curr_dir_str = str(self.current_dir)
             if len(curr_dir_str) > cols - 8:
                 curr_dir_str = "..." + curr_dir_str[-(cols - 11):]
             out.append(f"{c_border}{BOX_VERT}{STYLE_RESET}  {c_badge}Location:{STYLE_RESET} {c_title}{curr_dir_str}{STYLE_RESET}")
-            out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
 
-            visible_rows = lines - 8
+            if self._notification and self._notification_ticks > 0:
+                out.append(f"{c_border}{BOX_VERT}{STYLE_RESET}  {c_green}{STYLE_BOLD}{self._notification}{STYLE_RESET}")
+                self._notification_ticks -= 1
+            else:
+                out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
+
+            visible_rows = max(5, lines - 8)
             page_items = self.items[self.scroll_offset : self.scroll_offset + visible_rows]
 
             if not self.items:
@@ -125,7 +150,7 @@ class FileBrowser:
             for i, item in enumerate(page_items):
                 actual_idx = self.scroll_offset + i
                 is_selected = actual_idx == self.selected_index
-                pointer = f"{c_green}▶{STYLE_RESET} " if is_selected else "  "
+                pointer = f"{c_green}►{STYLE_RESET} " if is_selected else "  "
 
                 if item.is_dir():
                     icon = f"{c_badge}📁 "
@@ -134,7 +159,7 @@ class FileBrowser:
                     icon = f"{c_green}🎵 "
                     name = item.name
 
-                max_name_len = cols - 12
+                max_name_len = max(10, cols - 12)
                 if len(name) > max_name_len:
                     name = name[: max_name_len - 3] + "..."
 
@@ -151,11 +176,11 @@ class FileBrowser:
             # Footer
             out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
             footer_keys = (
-                f" {c_badge}↑/↓{STYLE_RESET} {c_key_txt}NAVIGATE{STYLE_RESET}   "
-                f"{c_badge}ENTER{STYLE_RESET} {c_key_txt}OPEN/SELECT{STYLE_RESET}   "
-                f"{c_badge}BACKSPACE{STYLE_RESET} {c_key_txt}UP{STYLE_RESET}   "
-                f"{c_badge}P{STYLE_RESET} {c_key_txt}PLAY ALL IN DIR{STYLE_RESET}   "
-                f"{c_badge}Q{STYLE_RESET} {c_key_txt}BACK{STYLE_RESET}"
+                f" {c_badge}ENTER{STYLE_RESET} {c_key_txt}SELECT{STYLE_RESET}   "
+                f"{c_badge}A{STYLE_RESET} {c_key_txt}ADD TO PLAYLIST{STYLE_RESET}   "
+                f"{c_badge}P{STYLE_RESET} {c_key_txt}PLAY DIR{STYLE_RESET}   "
+                f"{c_badge}BKSP{STYLE_RESET} {c_key_txt}UP{STYLE_RESET}   "
+                f"{c_badge}B/ESC{STYLE_RESET} {c_key_txt}BACK{STYLE_RESET}"
             )
             out.append(footer_keys)
 
@@ -165,6 +190,7 @@ class FileBrowser:
             if not key:
                 continue
 
+            k = key.upper()
             if key == "UP":
                 self.move_selection(-1, visible_rows)
             elif key == "DOWN":
@@ -175,18 +201,27 @@ class FileBrowser:
                     return res
             elif key in ("BACKSPACE", "LEFT"):
                 self.navigate_up()
-            elif key.upper() == "P":
-                # Play whole directory
+            elif k == "A":
+                msg = self.add_selected_to_playlist()
+                if msg:
+                    self._notification = msg
+                    self._notification_ticks = 20
+            elif k == "P":
                 return str(self.current_dir)
-            elif key in ("q", "Q", "ESCAPE"):
+            elif k in ("B", "Q", "ESCAPE"):
                 return None
 
 
-def show_startup_menu(screen: TerminalScreen, keyboard: KeyboardReader) -> Optional[str]:
-    """Display the cyberpunk startup screen and return chosen path or None to exit."""
-    # Check for Fav Music folder on Desktop
+def show_startup_menu(
+    screen,
+    keyboard: KeyboardReader,
+    theme_config: Optional[ThemeConfig] = None,
+) -> Optional[Union[str, List[str]]]:
+    """Display the cyberpunk startup screen and return chosen path(s) or None to exit."""
     desktop_fav = Path(os.path.expanduser("~")) / "Desktop" / "Fav Music"
     has_fav = desktop_fav.exists() and desktop_fav.is_dir()
+
+    t_cfg = theme_config if theme_config is not None else ThemeConfig()
 
     c_border = color_fg(COLOR_BORDER)
     c_border_dim = color_fg(COLOR_BORDER_DIM)
@@ -194,30 +229,35 @@ def show_startup_menu(screen: TerminalScreen, keyboard: KeyboardReader) -> Optio
     c_title = color_fg(COLOR_TITLE)
     c_badge = color_fg(COLOR_KEY_BADGE)
     c_dim = color_fg(COLOR_TEXT_DIM)
-    c_key_txt = color_fg(COLOR_KEY_TEXT)
-
-    menu_options = [
-        ("1", "Play a Single Audio/Video File"),
-        ("2", "Play a Folder (Recursive Playlist)"),
-    ]
-    if has_fav:
-        menu_options.append(("3", f"Play Fav Music ({desktop_fav.name})"))
-    menu_options.extend([
-        ("4" if has_fav else "3", "Interactive Terminal File Browser"),
-        ("Q", "Exit ttune"),
-    ])
 
     while True:
         cols, lines = screen.get_size()
         cols = max(60, cols)
-        lines = max(20, lines)
+        lines = max(22, lines)
+
+        playlist_count = global_custom_playlist.count
+        playlist_badge = f"({playlist_count} tracks)" if playlist_count > 0 else "(empty)"
+
+        menu_options = [
+            ("1", "Play a Single Audio/Video File"),
+            ("2", "Play a Folder (Recursive Queue)"),
+        ]
+        if has_fav:
+            menu_options.append(("3", f"Play Fav Music ({desktop_fav.name})"))
+
+        menu_options.extend([
+            ("4" if has_fav else "3", "Interactive Terminal File Browser"),
+            ("S", "Search Music Across PC"),
+            ("P", f"Custom Temporary Playlist {playlist_badge}"),
+            ("T", f"Customize Themes & Visualizer ({t_cfg.palette_name.upper()}, {t_cfg.shape_name})"),
+            ("Q", "Exit ttune"),
+        ])
 
         out = []
-        top_dash = cols - 24
+        top_dash = max(0, cols - 24)
         out.append(f"{c_border}{BOX_TOP_LEFT}{BOX_HORIZ * 3} [ ttune v1.0 ] {BOX_HORIZ * top_dash}{BOX_TOP_RIGHT}{STYLE_RESET}")
         out.append(f"{c_border}{BOX_VERT}{STYLE_RESET}{' ' * (cols - 2)}{c_border}{BOX_VERT}{STYLE_RESET}")
 
-        # Retro mini logo banner
         tagline = "RETRO CYBERPUNK TERMINAL MUSIC PLAYER"
         sub = "REAL-TIME FFT AUDIO SPECTRUM EQUALIZER"
         out.append(f"{c_border}{BOX_VERT}{STYLE_RESET}   {c_green}{STYLE_BOLD}{tagline}{STYLE_RESET}")
@@ -228,13 +268,12 @@ def show_startup_menu(screen: TerminalScreen, keyboard: KeyboardReader) -> Optio
 
         for key, text in menu_options:
             out.append(f"   {c_badge}[{key}]{STYLE_RESET}  {c_title}{text}{STYLE_RESET}")
-            out.append("")
 
         while len(out) < lines - 3:
             out.append("")
 
         out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
-        out.append(f" {c_dim}Press key {c_badge}[1-{len(menu_options)-1}]{c_dim} or {c_badge}[Q]{c_dim} to exit...{STYLE_RESET}")
+        out.append(f" {c_dim}Press key {c_badge}[1-4, S, P, T]{c_dim} or {c_badge}[Q]{c_dim} to exit...{STYLE_RESET}")
 
         screen.render_frame(out[:lines])
 
@@ -244,7 +283,6 @@ def show_startup_menu(screen: TerminalScreen, keyboard: KeyboardReader) -> Optio
 
         k = key.upper()
         if k == "1":
-            # Prompt user in terminal for path
             screen.restore_terminal()
             print(f"\n{color_fg(COLOR_TAG_GREEN)}Enter file path (audio or video):{STYLE_RESET}")
             try:
@@ -273,5 +311,18 @@ def show_startup_menu(screen: TerminalScreen, keyboard: KeyboardReader) -> Optio
             chosen = browser.run(screen, keyboard)
             if chosen:
                 return chosen
+        elif k == "S":
+            # Search music across PC
+            chosen_search = show_search_screen(screen, keyboard)
+            if chosen_search:
+                return chosen_search
+        elif k == "P":
+            # View/play custom playlist
+            chosen_playlist = show_playlist_screen(screen, keyboard)
+            if chosen_playlist:
+                return chosen_playlist
+        elif k == "T":
+            # Customize themes
+            show_theme_picker(screen, keyboard, t_cfg)
         elif k in ("Q", "ESCAPE"):
             return None

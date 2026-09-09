@@ -21,6 +21,7 @@ from ttune.config import (
     COLOR_TAG_PURPLE,
     COLOR_TEXT_DIM,
     COLOR_TITLE,
+    ThemeConfig,
 )
 from ttune.playlist.manager import PlaylistManager, RepeatMode
 from ttune.playlist.metadata import TrackMetadata, format_duration
@@ -115,6 +116,7 @@ class UIRenderer:
         spectrum_bars: np.ndarray,
         spectrum_peaks: np.ndarray,
         visualizer_only: bool = False,
+        theme_config: Optional[ThemeConfig] = None,
     ) -> List[str]:
         """Compose all components into a list of terminal screen lines.
 
@@ -153,7 +155,8 @@ class UIRenderer:
             vol_tag = f"{c_dim}MUTE{STYLE_RESET}" if is_muted else f"{c_badge}VOL: {vol_pct}%{STYLE_RESET}"
             rep_tag = f"{c_dim}REP: {playlist.repeat_mode.value}{STYLE_RESET}"
             shuf_tag = f"{c_green}SHUF{STYLE_RESET}" if playlist.shuffle_enabled else ""
-            tags = [t for t in [status_tag, vol_tag, rep_tag, shuf_tag] if t]
+            theme_tag = f"{c_dim}{theme_config.palette_name.upper()}{STYLE_RESET}" if theme_config else ""
+            tags = [t for t in [status_tag, vol_tag, rep_tag, shuf_tag, theme_tag] if t]
 
         tags_str = "  ".join(tags)
 
@@ -179,6 +182,7 @@ class UIRenderer:
                 height=viz_height,
                 bar_heights=spectrum_bars,
                 peak_heights=spectrum_peaks,
+                theme_config=theme_config,
             )
 
             for bl in bars_lines:
@@ -195,17 +199,8 @@ class UIRenderer:
         # 3. EXTENDED VISUALIZER AT THE TOP (Prevents layout bouncing!)
         # -------------------------------------------------------------
         # Calculate rows needed for bottom metadata section
-        # Metadata section:
-        # - Centered Title: 1 row
-        # - Centered Artist / Album / Format: 1 row
-        # - Centered Progress Bar: 1 row
-        # - Divider / Spacing: 1 row
-        # - UP NEXT header: 1 row
-        # - UP NEXT tracks: up_next_count (2 to 4 rows)
-        # Total bottom section lines = 5 + up_next_count
         up_next_count = 2 if lines < 25 else (3 if lines < 32 else (4 if lines < 40 else 5))
         bottom_needed = 5 + up_next_count
-        # Visualizer height: top header (1) + viz bottom border (1) + bottom_needed
         viz_height = max(4, lines - 2 - bottom_needed)
         viz_inner_width = max(10, cols - 4)
 
@@ -215,6 +210,7 @@ class UIRenderer:
             height=viz_height,
             bar_heights=spectrum_bars,
             peak_heights=spectrum_peaks,
+            theme_config=theme_config,
         )
 
         for bl in bars_lines:
