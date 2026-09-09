@@ -34,6 +34,8 @@
 
 ![Playlist & Queue](docs/screenshot-playlist.png)
 
+![Theme & Visualizer Style Customizer](docs/screenshot-themes.png)
+
 ![Interactive Startup Menu](docs/screenshot-menu.png)
 
 ---

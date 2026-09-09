@@ -155,7 +155,7 @@ def render_terminal_to_image(
 def generate_menu_screenshot():
     """Capture the startup menu frame."""
     cols = 88
-    lines = 22
+    lines = 24
     c_border = color_fg(COLOR_BORDER)
     c_border_dim = color_fg(COLOR_BORDER_DIM)
     c_green = color_fg(COLOR_TAG_GREEN)
@@ -166,8 +166,10 @@ def generate_menu_screenshot():
     menu_options = [
         ("1", "Play a Single Audio/Video File"),
         ("2", "Play a Folder (Recursive Playlist Queue)"),
-        ("3", "Play Fav Music Collection"),
-        ("4", "Interactive Terminal File Browser"),
+        ("3", "Search PC for Music Across All Drives"),
+        ("4", "Custom Temporary Playlist Builder"),
+        ("5", "Theme & Visualizer Style Customizer"),
+        ("B", "Interactive Terminal File Browser"),
         ("Q", "Exit ttune"),
     ]
 
@@ -188,9 +190,73 @@ def generate_menu_screenshot():
     while len(out) < lines - 3:
         out.append("")
     out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
-    out.append(f" {c_dim}Press key {c_badge}[1-4]{c_dim} or {c_badge}[Q]{c_dim} to exit...{STYLE_RESET}")
+    out.append(f" {c_dim}Press key {c_badge}[1-5, B, Q]{c_dim} to navigate...{STYLE_RESET}")
 
     render_terminal_to_image(out[:lines], "docs/screenshot-menu.png", title="ttune - startup menu", cols=cols)
+
+
+def generate_theme_screenshot():
+    """Capture the theme & visualizer customizer screen."""
+    from ttune.config import THEME_PALETTES, VISUALIZER_SHAPES, ThemeConfig
+    from ttune.ui.theme_picker import render_palette_swatch
+    from ttune.ui.theme import get_gradient_color
+
+    cols = 88
+    lines = 22
+    c_border = color_fg(COLOR_BORDER)
+    c_border_dim = color_fg(COLOR_BORDER_DIM)
+    c_green = color_fg(COLOR_TAG_GREEN)
+    c_title = color_fg(COLOR_TITLE)
+    c_badge = color_fg(COLOR_KEY_BADGE)
+    c_dim = color_fg(COLOR_TEXT_DIM)
+    c_key_txt = color_fg(COLOR_KEY_TEXT)
+
+    tc = ThemeConfig(palette_name="synthwave", shape_name="brick", show_peaks=True)
+    out = []
+    top_dash = cols - 32
+    out.append(f"{c_border}{BOX_TOP_LEFT}{BOX_HORIZ * 3} [ THEME & VISUALIZER STYLES ] {BOX_HORIZ * top_dash}{BOX_TOP_RIGHT}{STYLE_RESET}")
+    out.append(f"{c_border}{BOX_VERT}{STYLE_RESET}{' ' * (cols - 2)}{c_border}{BOX_VERT}{STYLE_RESET}")
+    out.append(f"{c_border}{BOX_VERT}{STYLE_RESET}   {c_green}{STYLE_BOLD}CUSTOMIZE AUDIO SPECTRUM VISUALS & RGB PALETTES{STYLE_RESET}")
+    out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
+    out.append("")
+
+    swatch = render_palette_swatch("synthwave", length=20)
+    out.append(f" {c_green}▶{STYLE_RESET} {c_badge}[1] Color Palette:{STYLE_RESET}  {c_title}{STYLE_BOLD}◀ SYNTHWAVE    ▶{STYLE_RESET}   {swatch}")
+    out.append("")
+    out.append(f"   {c_badge}[2] Equalizer Shape:{STYLE_RESET} {c_title}{STYLE_BOLD}◀ Brick / Standard ▶{STYLE_RESET}  {c_dim}(Full LED block bricks){STYLE_RESET}")
+    out.append("")
+    out.append(f"   {c_badge}[3] Peak Decay Caps:{STYLE_RESET} {c_green}[ENABLED]{STYLE_RESET}  {c_dim}(Press [3] or Space to toggle){STYLE_RESET}")
+    out.append("")
+    out.append(f"   {c_dim}─── LIVE SPECTRUM PREVIEW ───{STYLE_RESET}")
+
+    grad = tc.gradient
+    p_bars = [0.25, 0.45, 0.80, 1.0, 0.90, 0.65, 0.85, 0.70, 0.40, 0.20]
+    for r in (4, 3, 2, 1):
+        row_c = []
+        for b in p_bars:
+            frac = r / 4.0
+            prev = (r - 1) / 4.0
+            color_str = color_fg(get_gradient_color(frac, gradient=grad))
+            if b >= frac:
+                row_c.append(f"{color_str}██")
+            elif b > prev:
+                row_c.append(f"{color_str}▄▄")
+            else:
+                row_c.append("  ")
+            row_c.append(" ")
+        out.append(f"   {''.join(row_c)}{STYLE_RESET}")
+
+    while len(out) < lines - 3:
+        out.append("")
+    out.append(f"{c_border_dim}{BOX_HORIZ * cols}{STYLE_RESET}")
+    footer_help = (
+        f" {c_badge}↑/↓{STYLE_RESET} {c_key_txt}SELECT{STYLE_RESET}   "
+        f"{c_badge}←/→{STYLE_RESET} {c_key_txt}CHANGE PALETTE/SHAPE{STYLE_RESET}   "
+        f"{c_badge}ENTER/B/ESC{STYLE_RESET} {c_key_txt}APPLY & RETURN{STYLE_RESET}"
+    )
+    out.append(footer_help)
+
+    render_terminal_to_image(out[:lines], "docs/screenshot-themes.png", title="ttune - theme & visualizer customizer", cols=cols)
 
 
 def generate_all_screenshots():
@@ -282,6 +348,7 @@ def generate_all_screenshots():
 
     player.close()
     generate_menu_screenshot()
+    generate_theme_screenshot()
     print("All real screenshots generated successfully!")
 
 
